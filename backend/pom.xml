@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ========== Spring Boot 父 POM ========== -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.localai</groupId>
+    <artifactId>local-ai-agent</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>local-ai-agent</name>
+    <description>本地私有化 AI Agent - Spring Boot MCP 服务端（Java17 + Spring AI 1.0.0）</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <!--
+          Spring AI 1.0.0 GA：MCP Starter 在 GA 版中改名为
+            spring-ai-starter-mcp-server-webmvc（去掉了 -spring-boot 中缀）
+          MCP SDK：io.modelcontextprotocol.sdk:mcp 须显式声明，
+            BOM 管版本，但 Starter 把它标成 optional，不会自动传递。
+          版本兼容性：Spring AI 1.0.0 要求 MCP SDK 0.10.x
+        -->
+        <spring-ai.version>1.0.0</spring-ai.version>
+        <mcp-sdk.version>0.10.0</mcp-sdk.version>
+        <okhttp.version>4.12.0</okhttp.version>
+    </properties>
+
+    <!-- ========== 依赖管理（BOM） ========== -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- ========== 依赖列表 ========== -->
+    <dependencies>
+        <!-- 1. Spring Boot Web（内嵌 Tomcat，提供 REST / SSE） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!--
+          ★ 修复：ClassNotFoundException: io.modelcontextprotocol.spec.ServerMcpTransport
+          ─────────────────────────────────────────────────────────────────────
+          原因 1：旧 artifact 名 spring-ai-mcp-server-webmvc-spring-boot-starter
+                  是 M 系列写法，Spring AI 1.0.0 GA 已改名。
+          原因 2：MCP SDK（io.modelcontextprotocol.sdk:mcp）在 Starter 中被声明
+                  为 optional，不会自动传递，必须显式添加。
+          ─────────────────────────────────────────────────────────────────────
+        -->
+
+        <!-- 2a. Spring AI MCP Server Starter（GA 新名称） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
+
+        <!-- 2b. MCP Java SDK（显式声明，解决 ServerMcpTransport not found） -->
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp</artifactId>
+            <version>${mcp-sdk.version}</version>
+        </dependency>
+
+        <!--
+         ╔══════════════════════════════════════════════════════════════╗
+         ║  推理后端说明                                                  ║
+         ║  · 主力推理：llama.cpp server → Qwen3.6-35B-A3B-Q4_K_M.gguf ║
+         ║    - 端口 8080，暴露 OpenAI 兼容 API（/v1/chat/completions） ║
+         ║    - 由 LlamaService 直连（OkHttp，不经 Spring AI）           ║
+         ║  · 备用推理：Ollama → 保留给 AnythingLLM / 其他工具           ║
+         ║    - OllamaService 同样用 OkHttp 直连，不需要 Spring 自动配置 ║
+         ╚══════════════════════════════════════════════════════════════╝
+         注意：spring-ai-ollama-spring-boot-starter 已移除，
+               改为 OkHttp 直连 llama.cpp OpenAI 兼容接口。
+        -->
+
+        <!-- 4. Quartz 定时任务（MCP 社群工具 - 定时发帖） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-quartz</artifactId>
+        </dependency>
+
+        <!-- 5. OkHttp3（QQ/飞书 Bot HTTP 调用、Ollama 直连备选） -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>${okhttp.version}</version>
+        </dependency>
+
+        <!-- 6. Lombok（减少样板代码） -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 7. Jackson（JSON 序列化 / MCP 工具参数解析） -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- 8. Spring Boot Actuator（健康检查 /actuator/health） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- 9. 单元测试 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <!-- ========== 构建配置 ========== -->
+    <build>
+        <plugins>
+            <!-- Spring Boot 打包插件 - 生成可执行 Fat JAR -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                    <!-- 指定主类 -->
+                    <mainClass>com.localai.agent.LocalAiAgentApplication</mainClass>
+                </configuration>
+            </plugin>
+            <!-- Maven 编译器：指定 JDK17 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- ========== 仓库配置 ========== -->
+    <repositories>
+        <!-- Spring AI 1.0.0 GA 已发布到 Maven Central，但部分 artifact 仍在 milestone 仓库 -->
+        <repository>
+            <id>central</id>
+            <name>Maven Central</name>
+            <url>https://repo1.maven.org/maven2/</url>
+        </repository>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <!-- MCP SDK 仓库 -->
+        <repository>
+            <id>central-portal</id>
+            <name>Central Portal Snapshots</name>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+            <snapshots><enabled>true</enabled></snapshots>
+            <releases><enabled>false</enabled></releases>
+        </repository>
+    </repositories>
+</project>

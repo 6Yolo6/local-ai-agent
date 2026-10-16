@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "local-ai-agent": {
+      "type": "sse",
+      "url": "http://127.0.0.1:5000/mcp",
+      "description": "本地私有 AI Agent MCP 服务，提供代码生成/文件操作/系统命令/QQ飞书推送等工具"
+    }
+  },
+  "permissions": {
+    "allow": [
+      "mcp__local-ai-agent__generateCode",
+      "mcp__local-ai-agent__readFile",
+      "mcp__local-ai-agent__writeFile",
+      "mcp__local-ai-agent__listFiles",
+      "mcp__local-ai-agent__deleteFile",
+      "mcp__local-ai-agent__optimizeSql",
+      "mcp__local-ai-agent__compileProject",
+      "mcp__local-ai-agent__executeCommand",
+      "mcp__local-ai-agent__parseLog",
+      "mcp__local-ai-agent__readLastLines",
+      "mcp__local-ai-agent__getSystemInfo",
+      "mcp__local-ai-agent__postToQQChannel",
+      "mcp__local-ai-agent__sendQQMessage",
+      "mcp__local-ai-agent__pushToFeishu",
+      "mcp__local-ai-agent__generatePost",
+      "mcp__local-ai-agent__notifyResult"
+    ]
+  }
+}

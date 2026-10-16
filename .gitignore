@@ -1,0 +1,14 @@
+backend/target/
+frontend/dist/
+frontend/node_modules/
+router-layer/node_modules/
+logs/
+uploads/
+.tmp/
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.tmp
