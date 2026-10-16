@@ -11,32 +11,15 @@ import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
 
-/**
- * llama.cpp 本地推理服务（主力推理引擎）
- *
- * <p><b>模型</b>：Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf（MoE 架构，35B 参数 / 3B 激活）
- *
- * <p><b>接入方式</b>：通过 llama.cpp 的 OpenAI 兼容 API
- * <pre>
- *   llama-server.exe -m model.gguf --port 8080 --host 127.0.0.1
- *     → POST http://127.0.0.1:8080/v1/chat/completions
- * </pre>
- *
- * <p><b>架构角色</b>：
- * <ul>
- *   <li>LlamaService  → llama.cpp → GGUF 模型（本项目 MCP Agent 推理）</li>
- *   <li>OllamaService → Ollama   → 保留给 AnythingLLM 等工具使用</li>
- * </ul>
- *
- * <p><b>启动 llama.cpp 服务</b>（见 scripts/start-llamacpp.bat）：
- * <pre>
- *   llama-server.exe -m "D:/Dev/models/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf" ^
- *     --host 127.0.0.1 --port 8080 -c 8192 -t 8 --chat-template chatml
- * </pre>
- */
+/** Optional llama.cpp compatibility adapter. Default inference uses the local Ollama model. */
 @Slf4j
 @Service
 public class LlamaService {
+    private final OllamaService ollamaService;
+    @Value("${local-ai.llamacpp.enabled:false}")
+    private boolean enabled;
+    public LlamaService(OllamaService ollamaService) { this.ollamaService = ollamaService; }
+
 
     // ── 配置项（application.yml → local-ai.llamacpp.*） ────────────────
     @Value("${local-ai.llamacpp.base-url:http://127.0.0.1:8080}")
@@ -93,6 +76,7 @@ public class LlamaService {
      * @return 模型回复文本
      */
     public String chatWithSystem(String systemPrompt, String userPrompt) {
+        if (!enabled) return ollamaService.chatWithSystem(systemPrompt, userPrompt);
         log.debug("[Llama] chatWithSystem: system={}, user截取={}",
                 systemPrompt != null,
                 userPrompt.length() > 60 ? userPrompt.substring(0, 60) + "..." : userPrompt);
@@ -120,6 +104,7 @@ public class LlamaService {
      * @return true=在线
      */
     public boolean isAlive() {
+        if (!enabled) return false;
         try {
             Request req = new Request.Builder()
                     .url(baseUrl + "/health")

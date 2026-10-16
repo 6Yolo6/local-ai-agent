@@ -1,7 +1,7 @@
 param(
-    [string]$OpenClawRoot = "D:\OpenClaw\openclaw-cn",
-    [string]$OpenClawHome = "C:\Users\20317.YOLO",
-    [string]$NodeExe = "D:\Dev\NodeJs-24\node.exe",
+    [string]$OpenClawRoot = $env:OPENCLAW_ROOT,
+    [string]$OpenClawHome = $env:USERPROFILE,
+    [string]$NodeExe = (Get-Command node.exe -ErrorAction Stop).Source,
     [int]$GatewayPort = 18789
 )
 

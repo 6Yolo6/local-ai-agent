@@ -40,7 +40,7 @@ public class SystemTools {
 
     private final LlamaService llamaService;
 
-    @Value("${local-ai.file.workspace-root:D:/Dev/project/local-ai-agent}")
+    @Value("${local-ai.file.workspace-root:${user.dir}}")
     private String workspaceRoot;
 
     /**

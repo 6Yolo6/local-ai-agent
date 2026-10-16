@@ -1,6 +1,6 @@
 param(
-    [string]$OpenClawRoot = "D:\OpenClaw\openclaw-cn",
-    [string]$OpenClawHome = "C:\Users\20317.YOLO",
+    [string]$OpenClawRoot = $env:OPENCLAW_ROOT,
+    [string]$OpenClawHome = $env:USERPROFILE,
     [int]$GatewayPort = 18789,
     [string]$LlamaModelsUrl = "http://127.0.0.1:8080/v1/models"
 )

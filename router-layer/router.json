@@ -1,44 +1,19 @@
 {
-  "semanticRouter": {
-    "enabled": true,
-    "classifier": {
-      "provider": "ollama",
-      "model": "qwen2.5-1.5b",
-      "baseUrl": "http://127.0.0.1:11434/v1",
-      "prompt": "你是任务分类器，只输出JSON，不要解释。",
-      "schema": {
-        "type": "object",
-        "properties": {
-          "type": { "enum": ["chat","reasoning","code","rag","tool"] },
-          "complexity": { "enum": ["low","mid","high"] }
-        }
-      }
-    },
-    "routingTable": {
-      "chat": {
-        "provider": "ollama",
-        "model": "qwen14",
-        "baseUrl": "http://127.0.0.1:11434/v1"
-      },
-      "reasoning": {
-        "provider": "llama-local",
-        "model": "qwen35",
-        "baseUrl": "http://127.0.0.1:8080/v1"
-      },
-      "code": {
-        "provider": "local-ai-agent",
-        "endpoint": "http://127.0.0.1:5000/api/chat",
-        "engine": "llama"
-      },
-      "rag": {
-        "provider": "anythingllm",
-        "endpoint": "http://127.0.0.1:5001/api/rag"
-      },
-      "tool": {
-        "provider": "local-ai-agent",
-        "endpoint": "http://127.0.0.1:5000/api/chat",
-        "engine": "llama"
-      }
-    }
+  "mode": "unified-assistant",
+  "classifierEnabled": false,
+  "assistant": {
+    "endpoint": "http://127.0.0.1:5000/api/assistant",
+    "timeoutMs": 240000
+  },
+  "compatibility": {
+    "endpoint": "/api/agent",
+    "taskTypes": [
+      "chat",
+      "reasoning",
+      "code",
+      "rag",
+      "tool"
+    ],
+    "response": "{ taskInfo, result: ApiResponse<AssistantResult> }"
   }
 }

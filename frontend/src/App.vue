@@ -6,13 +6,12 @@
         <span class="logo-icon">⬡</span>
         <div class="logo-text">
           <span class="logo-title">Local AI</span>
-          <span class="logo-sub">Agent v1.0</span>
+          <span class="logo-sub">只读查询助手</span>
         </div>
       </div>
 
       <!-- 服务状态指示灯 -->
       <div class="status-bar">
-        <StatusDot label="llama.cpp" :online="store.isLlamaOnline" />
         <StatusDot label="Ollama"    :online="store.isOllamaOnline" />
         <StatusDot label="MCP"       :online="store.isServerOnline" />
       </div>
@@ -34,12 +33,12 @@
       <!-- 底部模型信息 -->
       <div class="sidebar-footer">
         <div class="model-badge">
-          <span class="model-dot" :class="store.isLlamaOnline ? 'dot-green' : 'dot-red'" />
-          <span class="model-name">Qwen3.6-35B·A3B</span>
+          <span class="model-dot" :class="store.isOllamaOnline ? 'dot-green' : 'dot-red'" />
+          <span class="model-name">{{ store.modelName }}</span>
         </div>
         <div class="model-badge model-badge--secondary">
           <span class="model-dot" :class="store.isOllamaOnline ? 'dot-green' : 'dot-gray'" />
-          <span class="model-name">Ollama·qwen3:14b</span>
+          <span class="model-name">Ollama · 本机轻量模型</span>
         </div>
       </div>
     </aside>
@@ -56,7 +55,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { h, onMounted, onUnmounted } from 'vue'
 import { useAgentStore } from '@/stores/useAgentStore.js'
 import {
   DataAnalysis,
@@ -71,9 +70,9 @@ const store = useAgentStore()
 // 导航菜单定义
 const navItems = [
   { to: '/',       label: '仪表盘',       icon: DataAnalysis   },
-  { to: '/chat',   label: '对话 / Play',  icon: ChatRound      },
-  { to: '/tools',  label: 'MCP 工具',     icon: Tools          },
-  { to: '/logs',   label: '日志',         icon: Document       },
+  { to: '/chat',   label: '查询对话',  icon: ChatRound      },
+  { to: '/tools',  label: '只读工具',     icon: Tools          },
+  { to: '/logs',   label: '执行日志',         icon: Document       },
   { to: '/config', label: '配置',         icon: Setting        },
 ]
 
@@ -89,15 +88,11 @@ onUnmounted(() => clearInterval(timer))
 const StatusDot = {
   name: 'StatusDot',
   props: { label: String, online: Boolean },
-  template: `
-    <div class="status-dot-item">
-      <span class="status-dot-circle" :class="online ? 'pulse-green' : 'dot-red'" />
-      <span class="status-dot-label">{{ label }}</span>
-      <span class="status-dot-val" :class="online ? 'text-green' : 'text-red'">
-        {{ online ? 'ON' : 'OFF' }}
-      </span>
-    </div>
-  `
+  setup: (props) => () => h('div', { class: 'status-dot-item' }, [
+    h('span', { class: ['status-dot-circle', props.online ? 'pulse-green' : 'dot-gray'] }),
+    h('span', { class: 'status-dot-label' }, props.label),
+    h('span', { class: ['status-dot-val', props.online ? 'text-green' : 'text-muted'] }, props.online ? 'ON' : '—')
+  ])
 }
 </script>
 
@@ -192,6 +187,7 @@ html, body {
 .status-dot-val   { font-family: var(--font-mono); font-size: 11px; }
 .text-green { color: var(--green); }
 .text-red   { color: var(--red); }
+.text-muted { color: var(--text-2); }
 
 .pulse-green {
   background: var(--green);

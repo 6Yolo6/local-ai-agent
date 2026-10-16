@@ -1,97 +1,74 @@
-# ============================================================
-#  本地 AI Agent - 应用配置
-#  路径: backend/src/main/resources/application.yml
-# ============================================================
-
+# Portable defaults. The launcher supplies this machine's paths.
 server:
-  port: 5000               # MCP 服务端口（ClaudeCode 连接此端口）
-  servlet:
-    context-path: /
-
+  address: 127.0.0.1
+  port: ${LOCAL_AI_BACKEND_PORT:5000}
 spring:
   application:
     name: local-ai-agent
-
-  # ── MCP Server 自动配置 ─────────────────────────────────────
-  # 启用 Spring AI MCP Server，暴露 /mcp 端点给 ClaudeCode/OpenClaw
-  # 工具通过 McpToolsConfig.mcpToolCallbackProvider 注册
-
-# ── 本地配置（自定义属性） ────────────────────────────────────
+  ai:
+    mcp:
+      server:
+        name: local-ai-agent
+        version: 1.1.0
+        sse-endpoint: /sse
+        sse-message-endpoint: /mcp/message
 local-ai:
-
-  # ── 主力推理：llama.cpp + Qwen3.6-35B-A3B-Q4_K_M.gguf ───────
-  llamacpp:
-    base-url: http://127.0.0.1:8080     # llama.cpp server 端口（固定）
-    model: local-model                   # llama.cpp 忽略此字段，占位用
-    temperature: 0.7
-    max-tokens: 4096
-    timeout-seconds: 180                 # MoE 模型首 token 较慢，给足超时
-
-  # ── 备用推理：Ollama（给 AnythingLLM / Open WebUI 用） ──────────
   ollama:
-    base-url: http://127.0.0.1:11434
-    model: qwen3:14b
+    base-url: ${LOCAL_AI_OLLAMA_URL:http://127.0.0.1:11434}
+    model: ${LOCAL_AI_MODEL:qwen3:1.7b}
     timeout-seconds: 120
-
-  # ── QQ 频道 Bot（go-cqhttp / OneBot11 协议） ──────────────────
+    context-length: 4096
+    max-tokens: 768
+    think: false
+  assistant:
+    max-tool-calls: 4
+    max-rounds: 6
+    timeout-seconds: 180
+  # Optional legacy engine; excluded from the default startup.
+  llamacpp:
+    enabled: ${LOCAL_AI_LLAMACPP_ENABLED:false}
+    base-url: ${LOCAL_AI_LLAMACPP_URL:http://127.0.0.1:8080}
+    model: ${LOCAL_AI_LLAMACPP_MODEL:local-model}
+    temperature: 0.7
+    max-tokens: 768
+    timeout-seconds: 120
   qq:
     cqhttp-url: ${LOCAL_AI_QQ_CQHTTP_URL:http://127.0.0.1:5700}
     official-api-base-url: ${LOCAL_AI_QQ_OFFICIAL_API_BASE_URL:https://api.sgroup.qq.com}
-    bot-token: ${LOCAL_AI_QQ_BOT_TOKEN:${TENCENT_CHANNEL_BOT_TOKEN:}}
-    guild-id: ${LOCAL_AI_QQ_GUILD_ID:}           # 你的频道 ID（QQ 开发者平台获取）
-    channel-id: ${LOCAL_AI_QQ_CHANNEL_ID:}       # 子频道 ID
+    bot-token: ${LOCAL_AI_QQ_BOT_TOKEN:}
+    guild-id: ${LOCAL_AI_QQ_GUILD_ID:}
+    channel-id: ${LOCAL_AI_QQ_CHANNEL_ID:}
     webhook-secret: ${LOCAL_AI_QQ_WEBHOOK_SECRET:}
-    command-prefix: ${LOCAL_AI_QQ_COMMAND_PREFIX:/ai}  # QQ 触发前缀（只响应 /ai 开头的消息）
-
-  # ── 飞书 Bot ──────────────────────────────────────────────────
+    command-prefix: ${LOCAL_AI_QQ_COMMAND_PREFIX:/ai}
   feishu:
-    webhook-url: ${LOCAL_AI_FEISHU_WEBHOOK_URL:}        # 飞书自定义机器人 Webhook URL
+    webhook-url: ${LOCAL_AI_FEISHU_WEBHOOK_URL:}
     app-id: ${LOCAL_AI_FEISHU_APP_ID:}
     app-secret: ${LOCAL_AI_FEISHU_APP_SECRET:}
     verify-token: ${LOCAL_AI_FEISHU_VERIFY_TOKEN:}
-
-  # ── 文件路径（D盘 Windows 环境） ──────────────────────────────
   file:
-    workspace-root: "D:/Dev/project/local-ai-agent"
-    upload-dir: "D:/Dev/project/local-ai-agent/uploads"
-    log-dir: "D:/Dev/project/local-ai-agent/logs"
-
-  # ── llama.cpp 安装路径 ─────────────────────────────────────────
-  llamacpp-install:
-    home: "D:/llama_cpp"
-    executable: "D:/llama_cpp/llama-server.exe"
-    model-path: "E:/AIModel/gguf/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf"
-
-  # ── 构建工具 ──────────────────────────────────────────────────
+    workspace-root: ${LOCAL_AI_WORKSPACE:${user.dir}}
+    upload-dir: ${LOCAL_AI_WORKSPACE:${user.dir}}/uploads
+    log-dir: ${LOCAL_AI_WORKSPACE:${user.dir}}/logs
   maven:
-    home: "D:/Dev/Maven/apache-maven-3.9.9"
-    executable: "D:/Dev/Maven/apache-maven-3.9.9/bin/mvn.cmd"
+    executable: ${LOCAL_AI_MAVEN_EXECUTABLE:mvn.cmd}
   nodejs:
-    home: "D:/Dev/NodeJs-24"
-    executable: "D:/Dev/NodeJs-24/node.exe"
-    npm-executable: "D:/Dev/NodeJs-24/npm.cmd"
-
-# ── 日志配置 ──────────────────────────────────────────────────
+    executable: ${LOCAL_AI_NODE_EXECUTABLE:node}
+    npm-executable: ${LOCAL_AI_NPM_EXECUTABLE:npm.cmd}
 logging:
   level:
     root: INFO
-    com.localai.agent: DEBUG
-    org.springframework.ai: INFO
+    com.localai.agent: INFO
   file:
-    name: D:/Dev/project/local-ai-agent/logs/agent.log
-    max-size: 50MB
-    max-history: 10
-  pattern:
-    # %wEx = 去除重复栈帧的异常输出（logback 标准写法，修复 %PARSER_ERROR[xwEx]）
-    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p) %clr(---){faint} %clr(%-40.40logger{39}){cyan} : %m%n%wEx"
-    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p --- [%t] %-40.40logger{39} : %m%n%wEx"
-
-# ── Actuator ──────────────────────────────────────────────────
+    name: ${LOCAL_AI_WORKSPACE:${user.dir}}/logs/agent.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
 management:
   endpoints:
     web:
       exposure:
-        include: "health,info,metrics"
+        include: health,info
   endpoint:
     health:
-      show-details: always
+      show-details: never

@@ -12,3 +12,7 @@ uploads/
 
 *.log
 *.tmp
+
+.local/
+__pycache__/
+router-layer/.qa-runtime/

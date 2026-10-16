@@ -1,42 +1,52 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getStatus } from '@/api/index.js'
+import { getStatus, getTools } from '@/api/index.js'
 
 export const useAgentStore = defineStore('agent', () => {
-  // ── 状态 ──────────────────────────────────────────────────────
   const status = ref({
-    server:    'unknown',
-    llamacpp:  'unknown',
-    ollama:    'unknown',
-    llamaModel:  'Qwen3.6-35B-A3B-Q4_K_M',
-    ollamaModel: 'qwen3:14b',
-    mcpEndpoint: 'http://127.0.0.1:5000/mcp',
-    timestamp: null
+    server: 'unknown', ollama: 'unknown', engine: 'ollama',
+    model: '', ollamaModel: '', assistantMode: 'read-only',
+    workspaceRoot: '', mcpEndpoint: 'http://127.0.0.1:5000/sse'
   })
-
-  const loading    = ref(false)
+  const tools = ref([])
+  const toolsLoaded = ref(false)
+  const toolsError = ref('')
+  const statusError = ref('')
+  const loading = ref(false)
   const lastRefresh = ref(null)
+  const isOllamaOnline = computed(() => status.value.ollama === 'online')
+  const isServerOnline = computed(() => status.value.server === 'running')
+  const modelName = computed(() => status.value.model || status.value.ollamaModel || '等待模型信息')
 
-  // ── 计算属性 ──────────────────────────────────────────────────
-  const isLlamaOnline  = computed(() => status.value.llamacpp === 'online')
-  const isOllamaOnline = computed(() => status.value.ollama   === 'online')
-  const isServerOnline = computed(() => status.value.server   === 'running')
-
-  // ── Actions ───────────────────────────────────────────────────
   async function refreshStatus() {
+    if (loading.value) return
     loading.value = true
     try {
       const resp = await getStatus()
-      if (resp.code === 200) {
-        status.value  = resp.data
-        lastRefresh.value = new Date()
-      }
+      if (resp.code !== 200) throw new Error(resp.message || '状态读取失败')
+      status.value = resp.data
+      statusError.value = ''
+      lastRefresh.value = new Date()
     } catch (e) {
-      console.warn('状态刷新失败:', e.message)
+      status.value = { ...status.value, server: 'unknown', ollama: 'unknown' }
+      statusError.value = e.message
     } finally {
       loading.value = false
     }
   }
 
-  return { status, loading, lastRefresh, isLlamaOnline, isOllamaOnline, isServerOnline, refreshStatus }
+  async function refreshTools() {
+    try {
+      const resp = await getTools()
+      if (resp.code !== 200 || !Array.isArray(resp.data)) throw new Error(resp.message || '工具清单读取失败')
+      tools.value = resp.data
+      toolsLoaded.value = true
+      toolsError.value = ''
+    } catch (e) {
+      toolsError.value = e.message
+    }
+  }
+
+  return { status, tools, toolsLoaded, toolsError, statusError, loading, lastRefresh,
+    isOllamaOnline, isServerOnline, modelName, refreshStatus, refreshTools }
 })

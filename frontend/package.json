@@ -3,24 +3,25 @@
   "version": "1.0.0",
   "description": "本地 AI Agent 管理后台 - Vue3 + Element Plus",
   "scripts": {
-    "dev":   "vite --host 0.0.0.0 --port 3000",
+    "dev": "vite --host 127.0.0.1 --port 3000",
     "build": "vite build",
-    "preview": "vite preview --port 3000"
+    "preview": "vite preview --port 3000",
+    "test": "node --test src/utils/conversation.test.mjs"
   },
   "dependencies": {
-    "vue":               "^3.4.21",
-    "vue-router":        "^4.3.0",
-    "pinia":             "^2.1.7",
-    "axios":             "^1.6.8",
-    "element-plus":      "^2.7.2",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0",
+    "pinia": "^2.1.7",
+    "axios": "^1.6.8",
+    "element-plus": "^2.7.2",
     "@element-plus/icons-vue": "^2.3.1",
-    "marked":            "^12.0.0",
-    "highlight.js":      "^11.9.0"
+    "marked": "^12.0.0",
+    "highlight.js": "^11.9.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
-    "vite":              "^5.2.8",
-    "autoprefixer":      "^10.4.19",
-    "postcss":           "^8.4.38"
+    "vite": "^5.2.8",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38"
   }
 }

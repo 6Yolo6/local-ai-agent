@@ -3,6 +3,8 @@ package com.localai.agent.controller;
 import com.localai.agent.bot.feishu.FeishuBotService;
 import com.localai.agent.bot.qq.QQBotService;
 import com.localai.agent.model.ApiResponse;
+import com.localai.agent.assistant.ReadOnlyTools;
+import java.util.LinkedHashMap;
 import com.localai.agent.ollama.LlamaService;
 import com.localai.agent.ollama.OllamaService;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,16 @@ public class AdminController {
     private final OllamaService ollamaService;
     private final QQBotService  qqBotService;
     private final FeishuBotService feishuBotService;
+    private final ReadOnlyTools readOnlyTools;
+
+    @Value("${local-ai.llamacpp.enabled:false}")
+    private boolean llamaEnabled;
+    @Value("${local-ai.llamacpp.model:local-model}")
+    private String llamaModel;
+    @Value("${server.port:5000}")
+    private int serverPort;
+    @Value("${spring.ai.mcp.server.sse-endpoint:/sse}")
+    private String mcpSseEndpoint;
 
     @Value("${local-ai.qq.webhook-secret:}")
     private String qqWebhookSecret;
@@ -48,29 +60,32 @@ public class AdminController {
 
     @GetMapping("/api/status")
     public ApiResponse<Map<String, Object>> getStatus() {
-        boolean llamaAlive  = llamaService.isAlive();
         boolean ollamaAlive = ollamaService.isAlive();
-
-        return ApiResponse.success(Map.of(
-            "server",       "running",
-            "llamacpp",     llamaAlive  ? "online" : "offline",
-            "ollama",       ollamaAlive ? "online" : "offline",
-            "llamaModel",   "Qwen3.6-35B-A3B-Q4_K_M",
-            "ollamaModel",  "qwen3:14b",
-            "mcpEndpoint",  "http://127.0.0.1:5000/mcp",
-            "timestamp",    LocalDateTime.now().toString()
-        ));
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("server", "running");
+        status.put("engine", "ollama");
+        status.put("model", ollamaService.modelName());
+        status.put("ollamaModel", ollamaService.modelName());
+        status.put("ollama", ollamaAlive ? "online" : "offline");
+        status.put("llamacpp", llamaEnabled ? (llamaService.isAlive() ? "online" : "offline") : "disabled");
+        status.put("llamaModel", llamaEnabled ? llamaModel : "未启用");
+        status.put("mcpEndpoint", "http://127.0.0.1:" + serverPort + mcpSseEndpoint);
+        status.put("assistantMode", "read-only");
+        status.put("workspaceRoot", readOnlyTools.workspaceRoot());
+        status.put("toolCount", readOnlyTools.definitions().size());
+        status.put("timestamp", LocalDateTime.now().toString());
+        return ApiResponse.success(status);
     }
 
     @GetMapping("/api/models")
     public ApiResponse<String> getModels() {
-        return ApiResponse.success(llamaService.getModelInfo());
+        return ApiResponse.success(ollamaService.listModels());
     }
 
     /** llama.cpp 实时推理速度（tokens/s）等指标 */
     @GetMapping("/api/metrics")
     public ApiResponse<String> getMetrics() {
-        return ApiResponse.success(llamaService.getMetrics());
+        return ApiResponse.success(llamaEnabled ? llamaService.getMetrics() : "llama.cpp 未启用；当前使用 Ollama");
     }
 
     // ── 对话接口（Playground）────────────────────────────────────
@@ -83,7 +98,7 @@ public class AdminController {
     public ApiResponse<String> chat(@RequestBody Map<String, String> body) {
         String prompt = body.getOrDefault("prompt", "").trim();
         String system = body.getOrDefault("system", "").trim();
-        String engine = body.getOrDefault("engine", "llama").trim(); // llama / ollama
+        String engine = body.getOrDefault("engine", "ollama").trim(); // llama / ollama
 
         if (prompt.isBlank()) {
             return ApiResponse.error("prompt 不能为空");
@@ -98,11 +113,13 @@ public class AdminController {
             result = system.isBlank()
                     ? ollamaService.chat(prompt)
                     : ollamaService.chatWithSystem(system, prompt);
-        } else {
-            // 默认使用 llama.cpp 主力引擎
+        } else if ("llama".equalsIgnoreCase(engine) && llamaEnabled) {
+            // 显式启用的可选 llama.cpp 引擎
             result = system.isBlank()
                     ? llamaService.chat(prompt)
                     : llamaService.chatWithSystem(system, prompt);
+        } else {
+            return ApiResponse.of(400, "不支持的引擎或 llama.cpp 尚未启用", null);
         }
 
         return ApiResponse.success(result);

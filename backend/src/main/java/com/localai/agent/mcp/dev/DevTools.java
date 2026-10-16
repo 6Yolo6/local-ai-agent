@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>包含工具：
  * <ul>
- *   <li>generateCode     - Java/Vue 代码生成（调用本地 llama.cpp / Qwen3.6-35B）</li>
+ *   <li>generateCode     - Java/Vue 代码生成（调用本地 Ollama / Qwen3）</li>
  *   <li>readFile         - 读取本地文件内容</li>
  *   <li>writeFile        - 写入/创建文件</li>
  *   <li>listFiles        - 列出目录内容</li>
@@ -42,13 +42,13 @@ public class DevTools {
 
     private final LlamaService llamaService;
 
-    @Value("${local-ai.file.workspace-root:D:/Dev/project/local-ai-agent}")
+    @Value("${local-ai.file.workspace-root:${user.dir}}")
     private String workspaceRoot;
 
-    @Value("${local-ai.maven.executable:D:/Dev/Maven/apache-maven-3.9.9/bin/mvn.cmd}")
+    @Value("${local-ai.maven.executable:mvn.cmd}")
     private String mavenExecutable;
 
-    @Value("${local-ai.nodejs.npm-executable:D:/Dev/NodeJs-24/npm.cmd}")
+    @Value("${local-ai.nodejs.npm-executable:npm.cmd}")
     private String npmExecutable;
 
     // ============================================================
@@ -56,14 +56,14 @@ public class DevTools {
     // ============================================================
 
     /**
-     * 根据需求描述，使用本地 Qwen3.6-35B 模型（通过 llama.cpp）生成 Java 或 Vue3 代码。
+     * 根据需求描述，使用本地 配置的本地模型生成 Java 或 Vue3 代码。
      *
      * @param language    编程语言（java / vue / javascript / sql 等）
      * @param requirement 功能需求描述（自然语言）
      * @param context     可选的上下文信息（已有类名、接口定义等）
      * @return 生成的代码字符串
      */
-    @Tool(description = "根据需求描述生成代码，支持 Java/Vue3/SQL。使用本地 llama.cpp / Qwen3.6-35B 模型推理，完全离线。")
+    @Tool(description = "根据需求描述生成代码，支持 Java/Vue3/SQL。使用本地 Ollama / Qwen3 模型推理，完全离线。")
     public String generateCode(String language, String requirement, String context) {
         log.info("[DevTool] generateCode: language={}, requirement截取={}", language,
                 requirement.length() > 50 ? requirement.substring(0, 50) + "..." : requirement);
@@ -104,7 +104,7 @@ public class DevTools {
      * @param filePath 文件的绝对路径或相对于工作区的相对路径
      * @return 文件文本内容
      */
-    @Tool(description = "读取本地文件内容。支持绝对路径（D:/Dev/...）和相对路径（相对于项目工作区根目录）。")
+    @Tool(description = "读取本地文件内容。支持工作区内的绝对路径和相对路径（相对于项目工作区根目录）。")
     public String readFile(String filePath) {
         log.info("[DevTool] readFile: {}", filePath);
         try {

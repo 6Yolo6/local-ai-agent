@@ -1,3 +1,5 @@
+> 历史集成记录：下文环境来自旧电脑，不能作为当前本机配置直接执行。本机以 [local-setup.md](local-setup.md) 和 [../README.md](../README.md) 为准，本阶段未启用机器人。
+
 # OpenClaw QQ Bot Runbook
 
 本文记录本机 OpenClaw + QQ Bot 的已验证运行方式。

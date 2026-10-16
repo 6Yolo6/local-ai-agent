@@ -1,9 +1,12 @@
 param(
-    [string]$OpenClawRoot = "D:\OpenClaw\openclaw-cn",
+    [string]$OpenClawRoot = $env:OPENCLAW_ROOT,
     [int]$GatewayPort = 18789
 )
 
-$ErrorActionPreference = "Continue"
+$ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($OpenClawRoot) -or -not (Test-Path -LiteralPath $OpenClawRoot)) {
+    throw "Set OPENCLAW_ROOT or pass an existing -OpenClawRoot before stopping this optional integration."
+}
 
 $targets = @()
 
@@ -11,7 +14,7 @@ $listeners = Get-NetTCPConnection -LocalPort $GatewayPort -ErrorAction SilentlyC
     Where-Object { $_.State -eq "Listen" }
 foreach ($listener in $listeners) {
     $owner = Get-CimInstance Win32_Process -Filter "ProcessId = $($listener.OwningProcess)" -ErrorAction SilentlyContinue
-    if ($owner -and $owner.CommandLine -match "openclaw\.mjs\s+gateway") {
+    if ($owner -and $owner.CommandLine -match "openclaw\.mjs\s+gateway" -and $owner.CommandLine -like "*$OpenClawRoot*") {
         $targets += [int]$listener.OwningProcess
     }
 }
@@ -20,7 +23,7 @@ $gatewayProcesses = Get-CimInstance Win32_Process |
     Where-Object {
         $_.CommandLine -and
         $_.CommandLine -match "openclaw\.mjs\s+gateway" -and
-        ($_.CommandLine -like "*$OpenClawRoot*" -or $_.ExecutablePath -like "*node*")
+        ($_.CommandLine -like "*$OpenClawRoot*")
     }
 foreach ($process in $gatewayProcesses) {
     $targets += [int]$process.ProcessId

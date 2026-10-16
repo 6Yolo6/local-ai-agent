@@ -1,71 +1,62 @@
 <template>
   <div class="page-wrap">
     <div class="page-header">
-      <h1 class="page-title">实时日志</h1>
+      <h1 class="page-title">执行日志</h1>
       <div class="header-actions">
-        <el-select v-model="level" size="small" style="width:100px">
-          <el-option label="ALL"  value="" />
-          <el-option label="ERROR" value="ERROR" />
-          <el-option label="WARN"  value="WARN" />
-          <el-option label="INFO"  value="INFO" />
+        <el-select v-model="kind" size="small" style="width:120px" aria-label="记录类型">
+          <el-option label="全部类型" value="" /><el-option label="工具调用" value="tool" />
+          <el-option label="模型请求" value="model" /><el-option label="错误" value="error" />
         </el-select>
-        <el-button size="small" @click="loadLogs">刷新</el-button>
-        <el-button size="small" @click="logs = []">清空</el-button>
+        <el-button size="small" :loading="loading" @click="loadLogs">刷新</el-button>
       </div>
     </div>
-    <div class="log-terminal" ref="termEl">
-      <div v-if="!logs.length" class="log-empty">— 暂无日志，点击刷新从后端读取 —</div>
-      <div v-for="(line, i) in filteredLogs" :key="i" class="log-line" :class="levelClass(line)">
-        <span class="log-text">{{ line }}</span>
-      </div>
+    <p class="page-note">后端保留的最近 200 条真实执行记录；每 5 秒刷新。服务重启后记录清空。</p>
+    <el-alert v-if="error" :title="error" type="error" :closable="false" />
+    <div class="log-list">
+      <div v-if="!filteredLogs.length" class="log-empty">{{ loading ? '正在读取…' : '暂无匹配的执行记录。发送一次查询后可在这里查看。' }}</div>
+      <article v-for="line in filteredLogs" :key="line.id" class="log-entry">
+        <div class="log-time">{{ formatTime(line.timestamp) }} · 请求 {{ line.requestId }}</div>
+        <ExecutionTrace :trace="[line]" expanded />
+      </article>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
-import api from '@/api/index.js'
-
-const logs    = ref([])
-const level   = ref('')
-const termEl  = ref(null)
-
-const filteredLogs = computed(() =>
-  level.value ? logs.value.filter(l => l.includes(` ${level.value} `)) : logs.value
-)
-
-function levelClass(line) {
-  if (line.includes(' ERROR ')) return 'log-error'
-  if (line.includes(' WARN '))  return 'log-warn'
-  if (line.includes(' DEBUG ')) return 'log-debug'
-  return ''
-}
-
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { getTraces } from '@/api/index.js'
+import ExecutionTrace from '@/components/ExecutionTrace.vue'
+const logs = ref([])
+const kind = ref('')
+const loading = ref(false)
+const error = ref('')
+let timer
+const filteredLogs = computed(() => logs.value.filter(l => !kind.value || (kind.value === 'error' ? l.status === 'error' : l.kind === kind.value)))
+const formatTime = (value) => value ? new Date(value).toLocaleString('zh-CN') : ''
 async function loadLogs() {
+  if (loading.value) return
+  loading.value = true
   try {
-    const resp = await api.get('/status') // 暂用 status 接口测试，实际可扩展为 /logs
-    logs.value.push(`[${new Date().toLocaleTimeString()}] INFO  服务状态: ${JSON.stringify(resp.data)}`)
-    await nextTick()
-    if (termEl.value) termEl.value.scrollTop = termEl.value.scrollHeight
+    const resp = await getTraces()
+    if (resp.code !== 200 || !Array.isArray(resp.data)) throw new Error(resp.message || '执行记录读取失败')
+    logs.value = resp.data
+    error.value = ''
   } catch (e) {
-    logs.value.push(`[${new Date().toLocaleTimeString()}] ERROR ${e.message}`)
-  }
+    error.value = '读取失败：' + e.message
+  } finally { loading.value = false }
 }
+onMounted(() => { loadLogs(); timer = setInterval(loadLogs, 5000) })
+onUnmounted(() => clearInterval(timer))
 </script>
 
 <style scoped>
-.page-wrap   { height: 100vh; overflow: hidden; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-.page-header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-.page-title  { font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: var(--text-1); }
+.page-wrap { height: 100vh; overflow: hidden; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.page-title { font: 700 20px var(--font-mono); color: var(--text-1); }
 .header-actions { display: flex; gap: 8px; align-items: center; }
-.log-terminal {
-  flex: 1; background: #010409; border: 1px solid var(--border); border-radius: 8px;
-  padding: 14px; overflow-y: auto; font-family: var(--font-mono); font-size: 12px;
-  line-height: 1.7;
-}
-.log-empty  { color: var(--text-3); text-align: center; padding: 40px; }
-.log-line   { color: var(--text-2); white-space: pre-wrap; word-break: break-all; }
-.log-error  { color: #f85149; }
-.log-warn   { color: #d29922; }
-.log-debug  { color: var(--text-3); }
+.page-note { font-size: 12px; color: var(--text-2); }
+.log-list { flex: 1; overflow-y: auto; }
+.log-entry { padding: 14px; margin-bottom: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+.log-time { color: var(--text-2); font: 11px var(--font-mono); overflow-wrap: anywhere; }
+.log-empty { color: var(--text-2); text-align: center; padding: 40px; }
 </style>
