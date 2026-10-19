@@ -1,8 +1,11 @@
 # Portable defaults. The launcher supplies this machine's paths.
 server:
+  shutdown: graceful
   address: 127.0.0.1
   port: ${LOCAL_AI_BACKEND_PORT:5000}
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 180s
   application:
     name: local-ai-agent
   ai:

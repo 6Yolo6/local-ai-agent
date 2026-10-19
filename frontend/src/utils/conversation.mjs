@@ -1,7 +1,7 @@
 // Backend limits: 3,000 characters per query, 6,000 per history message,
 // 10,000 in total. Keep up to four successful, complete conversation turns.
-export function buildHistory(messages, message) {
-  const successful = messages.filter(item => item.context).slice(-8)
+export function buildHistory(messages, message, scope = 'local') {
+  const successful = messages.filter(item => item.context && (item.scope || 'local') === scope).slice(-8)
   const turns = []
   let remaining = Math.max(0, 10000 - message.length)
   for (let i = successful.length - 2; i >= 0; i -= 2) {

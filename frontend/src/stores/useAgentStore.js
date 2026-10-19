@@ -8,6 +8,7 @@ export const useAgentStore = defineStore('agent', () => {
     model: '', ollamaModel: '', assistantMode: 'read-only',
     workspaceRoot: '', mcpEndpoint: 'http://127.0.0.1:5000/sse'
   })
+  const queryScope = ref('local')
   const tools = ref([])
   const toolsLoaded = ref(false)
   const toolsError = ref('')
@@ -36,17 +37,28 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   async function refreshTools() {
+    const scope = queryScope.value
     try {
-      const resp = await getTools()
+      const resp = await getTools(scope)
+      if (scope !== queryScope.value) return
       if (resp.code !== 200 || !Array.isArray(resp.data)) throw new Error(resp.message || '工具清单读取失败')
       tools.value = resp.data
       toolsLoaded.value = true
       toolsError.value = ''
     } catch (e) {
-      toolsError.value = e.message
+      if (scope === queryScope.value) toolsError.value = e.message
     }
   }
 
-  return { status, tools, toolsLoaded, toolsError, statusError, loading, lastRefresh,
+  function setQueryScope(scope) {
+    if (!['local', 'gying'].includes(scope) || scope === queryScope.value) return
+    queryScope.value = scope
+    tools.value = []
+    toolsLoaded.value = false
+    toolsError.value = ''
+    refreshTools()
+  }
+
+  return { queryScope, setQueryScope, status, tools, toolsLoaded, toolsError, statusError, loading, lastRefresh,
     isOllamaOnline, isServerOnline, modelName, refreshStatus, refreshTools }
 })

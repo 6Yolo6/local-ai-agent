@@ -2,13 +2,19 @@
   <div class="chat-layout">
     <div class="chat-topbar">
       <div><span class="chat-title">本地查询助手</span><span class="model-label">Ollama · {{ store.modelName }}</span></div>
-      <el-button size="small" :disabled="loading" @click="clearHistory">新对话</el-button>
+      <div class="chat-controls">
+        <el-select :model-value="store.queryScope" :disabled="loading" aria-label="查询模式" @change="switchScope" class="scope-select">
+          <el-option label="本机查询" value="local" />
+          <el-option label="GYING 片库" value="gying" />
+        </el-select>
+        <el-button size="small" :disabled="loading" @click="clearHistory">新对话</el-button>
+      </div>
     </div>
-    <div class="scope-note">第一阶段 · 只读查询。可查询工作区文本文件与本机状态，执行详情会随回复展示。</div>
+    <div class="scope-note">{{ store.queryScope === 'gying' ? '只读查询 GYING 片库和已审核正常资源。链接为片库记录，未实时核验外部可用性。切换模式会清空对话。' : '只读查询工作区文本文件与本机状态。切换模式会清空对话，执行详情随回复展示。' }}</div>
     <div class="messages" ref="messagesEl" aria-live="polite">
       <div v-if="!messages.length" class="empty-state">
         <div class="empty-icon">⬡</div>
-        <p>用自然语言查询本机信息</p>
+        <p>{{ store.queryScope === 'gying' ? '查询片名、年份与片库资源' : '用自然语言查询本机信息' }}</p>
         <div class="empty-hints">
           <button v-for="hint in hints" :key="hint" class="hint-chip" @click="inputText = hint">{{ hint }}</button>
         </div>
@@ -24,6 +30,12 @@
           <pre class="msg-content">{{ msg.content }}</pre>
           <p v-if="msg.historyTrimmed" class="context-note">较早的对话已缩短，本次回答使用保留下来的上下文。</p>
           <p v-if="msg.evidenceTruncated" class="context-note">模型读取的内容已截断；可展开执行记录查看本次工具返回。</p>
+          <div v-if="msg.sources?.length" class="source-note">
+            <div v-for="source in msg.sources" :key="source.url + source.queriedAt">
+              <span>片库来源：{{ source.url }}</span><br />
+              <span>查询时间：{{ formatQueryTime(source.queriedAt) }} · 外部链接未实时核验</span>
+            </div>
+          </div>
           <ExecutionTrace :trace="msg.trace" :request-id="msg.requestId" :expanded="msg.failed" />
         </div>
       </div>
@@ -38,7 +50,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { chat } from '@/api/index.js'
 import { buildHistory } from '@/utils/conversation.mjs'
 import { useAgentStore } from '@/stores/useAgentStore.js'
@@ -49,7 +61,16 @@ const inputText = ref('')
 const messages = ref([])
 const loading = ref(false)
 const messagesEl = ref(null)
-const hints = ['列出工作区根目录的文件', '读取 AGENTS.md 并概括项目结构', '查看本机系统状态']
+const hints = computed(() => store.queryScope === 'gying'
+  ? ['搜索流浪地球', '找一下 2023 年的流浪地球', '查询片库里的星际穿越及资源状态']
+  : ['列出工作区根目录的文件', '读取 AGENTS.md 并概括项目结构', '查看本机系统状态'])
+const switchScope = (scope) => {
+  if (loading.value || scope === store.queryScope) return
+  store.setQueryScope(scope)
+  messages.value = []
+  inputText.value = ''
+}
+const formatQueryTime = value => new Date(value).toLocaleString('zh-CN', { hour12: false })
 const clearHistory = () => { messages.value = [] }
 const now = () => new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 
@@ -58,21 +79,21 @@ async function sendMessage() {
   if (!text || loading.value) return
   // Only successful conversation turns become model context; UI errors and tool
   // output never become a fabricated assistant response in a later turn.
-  const history = buildHistory(messages.value, text)
-  const userMessage = { role: 'user', content: text, time: now(), context: false }
+  const history = buildHistory(messages.value, text, store.queryScope)
+  const userMessage = { role: 'user', content: text, time: now(), context: false, scope: store.queryScope }
   messages.value.push(userMessage)
   inputText.value = ''
   loading.value = true
   await scrollBottom()
   try {
-    const resp = await chat(text, history)
+    const resp = await chat(text, history, store.queryScope)
     const data = resp.data || {}
     const failed = resp.code !== 200 || data.status !== 'completed'
     userMessage.context = !failed
     messages.value.push({
       role: 'assistant', content: data.answer || data.error?.message || resp.message || '未收到回复',
       time: now(), model: data.model, trace: data.trace || [], requestId: data.requestId,
-      context: !failed, failed, historyTrimmed: !!data.historyTrimmed, evidenceTruncated: !!data.evidenceTruncated
+      scope: store.queryScope, sources: data.sources || [], context: !failed, failed, historyTrimmed: !!data.historyTrimmed, evidenceTruncated: !!data.evidenceTruncated
     })
   } catch (e) {
     messages.value.push({ role: 'assistant', content: '请求失败：' + e.message, time: now(), context: false, failed: true })
@@ -92,6 +113,9 @@ async function scrollBottom() {
 <style scoped>
 .chat-layout { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .chat-topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); gap: 12px; }
+.chat-controls { display: flex; align-items: center; gap: 10px; }
+.scope-select { width: 145px; }
+.source-note { color: var(--text-2); font-size: 11px; line-height: 1.6; margin-top: 10px; overflow-wrap: anywhere; }
 .chat-title { font-weight: 700; color: var(--text-1); }
 .model-label { font: 11px var(--font-mono); color: var(--text-2); margin-left: 14px; }
 .scope-note { padding: 10px 20px; color: var(--text-2); font-size: 12px; border-bottom: 1px solid var(--border); line-height: 1.6; }

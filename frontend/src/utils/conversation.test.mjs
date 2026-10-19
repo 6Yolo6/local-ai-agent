@@ -29,3 +29,10 @@ test('older turns are discarded before the request exceeds the backend budget', 
   assert.ok(query.length + result.reduce((total, item) => total + item.content.length, 0) <= 10000)
 })
 test('empty history stays empty', () => assert.deepEqual(buildHistory([], 'hello'), []))
+
+
+test('history never crosses local and GYING scopes', () => {
+  const messages = [...pair('local question', 'local answer'), ...pair('movie question', 'movie answer').map(item => ({ ...item, scope: 'gying' }))]
+  assert.deepEqual(buildHistory(messages, 'next', 'gying').map(item => item.content), ['movie question', 'movie answer'])
+  assert.deepEqual(buildHistory(messages, 'next', 'local').map(item => item.content), ['local question', 'local answer'])
+})

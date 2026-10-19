@@ -27,13 +27,15 @@ function createApp({ post = axios.post, endpoint = process.env.ASSISTANT_ENDPOIN
         !['user', 'assistant'].includes(item.role) || typeof item.content !== 'string')) {
       return res.status(400).json({ error: 'history must contain user/assistant messages with string content' });
     }
+    const scope = req.body?.scope ?? 'local';
+    if (!['local', 'gying'].includes(scope)) return res.status(400).json({ error: 'unsupported query scope' });
     const type = req.body?.type ?? 'assistant';
     if (!allowedTypes.has(type)) return res.status(400).json({ error: 'unsupported task type' });
 
     const taskInfo = { type, complexity: 'low', mode: 'unified-assistant', classifierEnabled: false };
     try {
       const response = await post(endpoint, {
-        message: input.trim(),
+        message: input.trim(), scope,
         history: history.map(({ role, content }) => ({ role, content }))
       }, { timeout: routerConfig.assistant.timeoutMs });
       res.json({ taskInfo, result: response.data });

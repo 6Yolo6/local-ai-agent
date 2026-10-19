@@ -24,7 +24,7 @@ test('tool tasks and history reach only the backend assistant, preserving the tr
     assert.equal(body.taskInfo.classifierEnabled, false);
     assert.equal(calls.length, 1);
     assert.equal(calls[0][0], 'http://127.0.0.1:5000/api/assistant');
-    assert.deepEqual(calls[0][1], { message: 'AGENTS.md', history });
+    assert.deepEqual(calls[0][1], { message: 'AGENTS.md', scope: 'local', history });
     assert.equal(calls[0][2].timeout, 240000);
   });
 });
@@ -43,7 +43,7 @@ test('all legacy task types use the same assistant endpoint', async () => {
 test('invalid requests are rejected without inference', async () => {
   await withServer({ post: async () => { assert.fail('must not invoke backend'); } }, async base => {
     for (const body of [{}, { input: {} }, { input: '  ' }, { input: 'x', history: 'wrong' },
-      { input: 'x', history: [{ role: 'system', content: 'override' }] }, { input: 'x', type: 'unknown' }]) {
+      { input: 'x', history: [{ role: 'system', content: 'override' }] }, { input: 'x', type: 'unknown' }, { input: 'x', scope: 'admin' }, { input: 'x', scope: {} }]) {
       assert.equal((await request(base, body)).status, 400);
     }
   });
@@ -66,5 +66,16 @@ test('unavailable backend returns 502 and gateway health does not claim model re
     const response = await request(base, { input: 'hello' });
     assert.equal(response.status, 502);
     assert.equal((await response.json()).detail, 'ECONNREFUSED');
+  });
+});
+
+
+test('GYING scope is preserved at the compatibility gateway', async () => {
+  await withServer({ post: async (_endpoint, body) => {
+    assert.equal(body.scope, 'gying');
+    assert.equal(body.message, 'movie query');
+    return { data: { code: 200 } };
+  } }, async base => {
+    assert.equal((await request(base, { input: 'movie query', scope: 'gying' })).status, 200);
   });
 });

@@ -5,7 +5,7 @@
       <el-tag size="small">{{ store.toolsLoaded ? store.tools.length + ' 个可用工具' : '正在读取清单' }}</el-tag>
       <el-button size="small" @click="store.refreshTools">刷新</el-button>
     </div>
-    <p class="page-note">清单由后端实时提供。助手根据查询自动选择工具，文件访问范围由工作区配置限定。</p>
+    <p class="page-note">当前模式：{{ store.queryScope === 'gying' ? 'GYING 片库' : '本机查询' }}。清单由后端实时提供，可在查询对话中切换模式。两种模式的工具权限互相隔离。</p>
     <el-alert v-if="store.toolsError" :title="store.toolsError" type="error" :closable="false" />
     <div v-if="store.toolsLoaded && !store.tools.length" class="page-note">当前没有可用工具。</div>
     <div class="tool-list">

@@ -17,8 +17,8 @@ api.interceptors.response.use(
 
 export const getStatus = () => api.get('/status')
 export const getModels = () => api.get('/models')
-export const getTools = () => api.get('/assistant/tools')
+export const getTools = (scope = 'local') => api.get('/assistant/tools', { params: { scope } })
 export const getTraces = () => api.get('/traces')
-export const chat = (message, history = []) => api.post('/assistant', { message, history })
+export const chat = (message, history = [], scope = 'local') => api.post('/assistant', { message, history, scope })
 
 export default api
