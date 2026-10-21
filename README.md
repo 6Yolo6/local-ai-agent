@@ -1,12 +1,12 @@
 # Local AI Agent
 
-适合 4GB 显存电脑的本地只读查询助手：Vue 管理界面 → Spring Boot 工具循环 → Ollama / Qwen3 1.7B。支持连续对话、读取工作区源码、查询系统信息，查询 GYING 片库与资源记录，以及查看真实模型与工具调用记录。
+适合 4GB 显存电脑的本地只读查询助手：Vue 管理界面 → Spring Boot 工具循环 → Ollama / Qwen3 1.7B。支持连续对话、读取工作区源码、查询系统信息，查看真实模型与工具调用记录。
 
 ## 当前能力
 
 - `POST /api/assistant` 接收问题与历史，模型按需调用工具，工具结果回传模型后生成最终回答。
-- 查询对话可选择“本机查询”或“GYING 片库”，切换会清空历史。`scope=local`（默认）开放 `getSystemInfo`、`listFiles`、`readFile`、`readLastLines`；`scope=gying` 只开放 `searchMovies`、`getMovieDetails`，两套工具权限隔离。
-- 工作区边界、参数检查、结果大小、超时、并发和调用次数均在服务端约束。GYING 模式仅查询本机片库的公开 GET 接口，附来源与查询时间，资源链接未实时核验。
+- 查询对话仅提供本机工作区与系统查询，开放 `getSystemInfo`、`listFiles`、`readFile`、`readLastLines`。
+- 工作区边界、参数检查、结果大小、超时、并发和调用次数均在服务端约束。项目网页与机器人需要的 GYING 查询保留在独立内部桥接中。
 - 日志页显示真实 trace。全局 trace 保存在内存，重启后清空；对话页展示本次请求的具体工具结果。
 - Router 的旧 `POST /api/agent` 入口统一转发到同一个助手，不再额外加载分类模型。
 - 保留 Spring AI MCP SSE 接口，以及旧开发/社群工具供手动接入；这些能力与自主只读助手分开。MCP 仍包含写文件、执行命令及外发工具，不能按只读接口对待。

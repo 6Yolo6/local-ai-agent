@@ -50,15 +50,6 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  function setQueryScope(scope) {
-    if (!['local', 'gying'].includes(scope) || scope === queryScope.value) return
-    queryScope.value = scope
-    tools.value = []
-    toolsLoaded.value = false
-    toolsError.value = ''
-    refreshTools()
-  }
-
-  return { queryScope, setQueryScope, status, tools, toolsLoaded, toolsError, statusError, loading, lastRefresh,
+  return { queryScope, status, tools, toolsLoaded, toolsError, statusError, loading, lastRefresh,
     isOllamaOnline, isServerOnline, modelName, refreshStatus, refreshTools }
 })

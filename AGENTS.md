@@ -15,7 +15,7 @@
 
 Vue 发送 message、history 与 scope → AssistantController → AssistantService → Ollama 原生 tool_calls → ReadOnlyTools → 结果回传 Ollama → 最终回答与 trace。
 
-自主助手按 scope 隔离工具：local（默认）只允许 getSystemInfo、listFiles、readFile、readLastLines；gying 只允许 searchMovies、getMovieDetails。GYING 仅通过回环地址公开 GET 查询片库，禁止转存、发布、修复、管理或用户自定义 URL；不得为了修复模型行为改成任意命令执行、直接写文件或自动发送消息。保持工作区边界、敏感文件限制、链接检查、单并发、上下文预算和执行次数/时限。新增工具必须补对应的行为测试。
+查询页面只提供 local 模式；内部桥接按 scope 隔离工具：local（默认）只允许 getSystemInfo、listFiles、readFile、readLastLines；gying 只允许 searchMovies、getMovieDetails。GYING 仅通过回环地址公开 GET 查询片库，禁止转存、发布、修复、管理或用户自定义 URL；不得为了修复模型行为改成任意命令执行、直接写文件或自动发送消息。保持工作区边界、敏感文件限制、链接检查、单并发、上下文预算和执行次数/时限。新增工具必须补对应的行为测试。
 
 旧 MCP 工具通过 McpToolsConfig 中 MethodToolCallbackProvider 注册，提供 SSE /sse 和消息端点 /mcp/message。旧 MCP 含写文件、执行命令和社群工具，不能描述为只读。不要将服务默认暴露到外网，不要在测试中发布真实内容。
 
