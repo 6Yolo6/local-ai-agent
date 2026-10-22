@@ -24,9 +24,12 @@ public class GyingTools {
     private final ObjectMapper mapper;
     private final HttpUrl origin;
     private final OkHttpClient client;
+    private final MovieWebTools web;
 
-    public GyingTools(@Value("${local-ai.gying.base-url:http://127.0.0.1:8880}") String baseUrl, ObjectMapper mapper) {
-        this.mapper = mapper;
+    public GyingTools(String baseUrl,ObjectMapper mapper) {this(baseUrl,mapper,new MovieWebTools(mapper));}
+    @org.springframework.beans.factory.annotation.Autowired
+    public GyingTools(@Value("${local-ai.gying.base-url:http://127.0.0.1:8880}") String baseUrl,ObjectMapper mapper,MovieWebTools web) {
+        this.mapper = mapper;this.web = web;
         this.origin = checkedOrigin(baseUrl);
         this.client = new OkHttpClient.Builder().proxy(Proxy.NO_PROXY)
                 // Queries are infrequent; a fresh loopback socket avoids stale Docker-forwarded keep-alives.
@@ -37,6 +40,7 @@ public class GyingTools {
     }
 
     @PreDestroy public void close() {
+        web.close();
         client.dispatcher().cancelAll();
         client.connectionPool().evictAll();
         client.dispatcher().executorService().shutdown();
@@ -65,6 +69,7 @@ public class GyingTools {
                         "limit", Map.of("type", "integer", "minimum", 1, "maximum", 3, "default", 3)), List.of("keyword"));
         definition(definitions, "getMovieDetails", "用片库 id 查询详情和已审核 NORMAL 资源；仅返回存量状态，未实时验证外部链接。",
                 Map.of("id", Map.of("type", "string", "pattern", "^[A-Za-z0-9_-]{1,64}$")), List.of("id"));
+        definitions.addAll(web.definitions());
         return definitions;
     }
 
@@ -76,6 +81,7 @@ public class GyingTools {
     }
 
     public ObjectNode execute(String name, JsonNode arguments) {
+        if("searchMovieWeb".equals(name))return web.execute(name,arguments);
         try {
             if (!Set.of("searchMovies", "getMovieDetails").contains(name))
                 throw failure("TOOL_NOT_ALLOWED", "当前模式仅允许查询 GYING 片库");
@@ -132,7 +138,7 @@ public class GyingTools {
         if (!activeMovie(movie)) throw failure("GYING_NOT_FOUND", "该影片不存在或当前未公开");
         ObjectNode data = provenance(endpoint);
         ObjectNode summary = movieSummary(movie);
-        text(summary, movie, "summary", 160);
+        text(summary, movie, "summary", 700);
         textList(summary, movie, "directors", 2);
         textList(summary, movie, "actors", 3);
         textList(summary, movie, "genres", 3);
@@ -161,6 +167,7 @@ public class GyingTools {
                 text(item, resource, "code", 20);
             } else item.put("urlOmitted", true);
         }
+        summary.put("resourceCount",matching.size());
         data.putObject("resourceSummary").put("approvedNormal", matching.size()).put("returned", resources.size())
                 .put("excluded", body.path("resources").size() - matching.size());
         data.put("truncated", matching.size() > resources.size() || summary.path("fieldsTruncated").asBoolean());

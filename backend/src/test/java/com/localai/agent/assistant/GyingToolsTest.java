@@ -109,7 +109,7 @@ class GyingToolsTest {
 
     @Test void detailsKeepOnlyApprovedActiveNormalResourcesAndNeverFetchTheirUrls() {
         ObjectNode body = mapper.createObjectNode();
-        body.set("movie", movie("gying_mv_test").put("summary", "简介".repeat(150)));
+        body.set("movie", movie("gying_mv_test").put("summary", "简介".repeat(450)));
         body.putArray("resources").add(resource("https://pan.quark.cn/s/example"))
                 .add(resource("https://invalid.test").put("linkStatus", "INVALID"))
                 .add(resource("https://pending.test").put("auditStatus", 0))
@@ -125,7 +125,7 @@ class GyingToolsTest {
         assertThat(result.path("data").path("resources").get(0).path("url").asText()).isEqualTo("https://pan.quark.cn/s/example");
         assertThat(result.path("data").path("resources").get(0).path("validatedAt").asText()).isEqualTo("2026-10-01T12:00:00");
         assertThat(result.path("data").path("resourceSummary").path("excluded").asInt()).isEqualTo(5);
-        assertThat(result.path("data").path("movie").path("summary").asText()).hasSize(160);
+        assertThat(result.path("data").path("movie").path("summary").asText()).hasSize(700);
         assertThat(result.path("data").path("truncated").asBoolean()).isTrue();
     }
 

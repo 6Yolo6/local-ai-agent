@@ -236,4 +236,13 @@ class AssistantServiceTest {
         assertThat(result.path("sources").get(0).path("queriedAt").asText()).isEqualTo("2026-10-17T00:00:00Z");
         assertThat(result.path("trace").get(1).path("result").path("data").path("movies").size()).isEqualTo(3);
     }
+    @Test void webAnswerUsesActualExcerptInsteadOfInventedPlotEnding() throws Exception {
+        ObjectNode evidence=mapper.createObjectNode().put("ok",true);
+        var data=evidence.putObject("data").put("queriedAt","2026-10-22T05:00:00Z");
+        data.putArray("webResults").addObject().put("title","测试电影").put("url","https://zh.wikipedia.org/wiki/Test").put("snippet","宇航员通过虫洞寻找新家园。");
+        doReturn(evidence).when(gyingTools).execute(eq("searchMovieWeb"),any());
+        when(ollama.chatMessages(any(),nullable(ArrayNode.class),anyLong())).thenReturn(call("searchMovieWeb",mapper.createObjectNode().put("query","测试电影")),answer("最终与外星人合作解决地球危机。"));
+        var output=assistant.run(request("联网查测试电影剧情").put("scope","gying"));
+        assertThat(output.path("answer").asText()).contains("宇航员通过虫洞寻找新家园。","https://zh.wikipedia.org/wiki/Test").doesNotContain("与外星人合作");
+    }
 }
