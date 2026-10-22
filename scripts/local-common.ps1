@@ -20,7 +20,15 @@ $env:LOCAL_AI_NPM_EXECUTABLE = $NpmExe
 $env:LOCAL_AI_MODEL = $LocalConfig.model
 # Optional private file enables only the outbound GYING catalog worker.
 $bridgeTokenPath = Join-Path $LocalDir 'gying-bridge-token.txt'
-if (Test-Path -LiteralPath $bridgeTokenPath) { $env:LOCAL_AI_GYING_BRIDGE_TOKEN_FILE = $bridgeTokenPath }
+if (Test-Path -LiteralPath $bridgeTokenPath) {
+    $env:LOCAL_AI_GYING_BRIDGE_TOKEN_FILE = $bridgeTokenPath
+}
+# Persistence is explicitly enabled with a separate private key file prepared by the operator.
+$bridgeStateKey = Join-Path $LocalDir 'gying-state-key.bin'
+if (Test-Path -LiteralPath $bridgeStateKey) {
+    $env:LOCAL_AI_GYING_STATE_FILE = Join-Path $LocalDir 'ai-state/bridge.bin'
+    $env:LOCAL_AI_GYING_STATE_KEY_FILE = $bridgeStateKey
+}
 $env:LOCAL_AI_OLLAMA_EXECUTABLE = $OllamaExe
 $env:OLLAMA_HOST = '127.0.0.1:11434'
 $env:LOCAL_AI_OLLAMA_URL = 'http://127.0.0.1:11434'

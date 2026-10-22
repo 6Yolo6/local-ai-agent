@@ -63,3 +63,11 @@ GYING 每条请求必须实际调用工具；模型直接用记忆或上一轮�
 GYING scope追加searchMovieWeb，固定zh/en维基百科公开API，只传影视关键词，禁止任意URL/重定向/工作区发送；local模式仍为四项工作区工具。每次限量查询与来源摘录，网页能显示联网引用、请求步骤和无资源搜索入口。小模型自由概括可能补出不存在结局，联网回答改为确定性原文摘录；不等同全网搜索/通用语义准确率。
 
 53项Maven verify通过，真实联网模型回归追加确定性摘录复验；只替换本地backend，旧不可变包G:/local-ai-agent/backups/ai-research-20261022/before.jar，服务平滑握手退出，未切模型/启动第二模型。生产业务发布由用户本轮明确授权，GYing原11安全失败保留。后续独立人工留出、embedding、文档RAG和API Key/配额未交付。
+
+## 持久回执候选（2026-10-22）
+
+出站 bridge 新增可选加密 checkpoint：`LOCAL_AI_GYING_STATE_FILE` 与 `LOCAL_AI_GYING_STATE_KEY_FILE` 必须同时配置，密钥为至少32字节的独立随机文件。启动器发现 `.local/gying-state-key.bin` 后启用 `.local/ai-state/bridge.bin`，否则保持原内存行为。此轮安全门禁阻断双服务生产替换，现役未启用。
+
+推理前先保存 jobId/lease/截止时间，结果落盘后才回传；重启后有结果仅重传，无结果回传 BRIDGE_INTERRUPTED，不重放原 attempt。45秒租约由独立线程每5秒续期，服务端240秒总预算不可延长。服务器终态的同lease/同结果回执可重复确认；409清除旧回执。状态绑定原origin，最多保存15分钟；成功/冲突清除，停机期在恢复时处理过期。单文件独占锁、AES-GCM、owner-only ACL/0600和原子替换，损坏或写入失败停止执行。单机单worker，不宣称工具级恢复或exactly-once推理。
+
+测试通过隔离fixture HTTP及独立JVM退出验证，模型为替身；真实站内跨重启待部署后单独验收。新增取消表示拒绝旧租约回执，当前只读模型调用仍可能执行至自身预算结束。部署先升级兼容的GYing backend再升级本机bridge；回退先排空，保存旧包/快照/key，不删除私有状态，不重放历史副作用。
