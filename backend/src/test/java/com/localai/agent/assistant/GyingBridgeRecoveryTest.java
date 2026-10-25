@@ -41,7 +41,7 @@ class GyingBridgeRecoveryTest {
     public static void main(String[] args) throws Exception {
         Path dir=Path.of(args[0]);String origin=args[1];ObjectMapper mapper=new ObjectMapper();
         AssistantService assistant=mock(AssistantService.class);
-        when(assistant.run(any())).thenAnswer(call->{Files.writeString(dir.resolve("inference-marker"),"once");return mapper.createObjectNode().put("scope","gying").put("answer","process-answer");});
+        when(assistant.runForJob(any(),anyString(),anyString())).thenAnswer(call->{Files.writeString(dir.resolve("inference-marker"),"once");return mapper.createObjectNode().put("scope","gying").put("answer","process-answer");});
         var bridge=new GyingBridge(assistant,mapper,origin,dir.resolve("token").toString(),dir.resolve("private/state.bin").toString(),dir.resolve("key").toString());
         bridge.pollOnce();Runtime.getRuntime().halt(0);
     }
@@ -72,11 +72,11 @@ class GyingBridgeRecoveryTest {
     }
     @Test void resultSurvivesRestartAndRetriesDeliveryWithoutInferenceOrClaim() throws Exception {
         serve();AssistantService assistant=mock(AssistantService.class);
-        when(assistant.run(any())).thenReturn(mapper.createObjectNode().put("scope","gying").put("answer","fixture-answer"));
+        when(assistant.runForJob(any(),anyString(),anyString())).thenReturn(mapper.createObjectNode().put("scope","gying").put("answer","fixture-answer"));
         try {
             var first=open(assistant);first.pollOnce();assertThat(deliveries).hasValue(1);first.close();
             deliveryStatus.set(200);var restored=open(assistant);restored.pollOnce();restored.close();
-            verify(assistant,times(1)).run(any());assertThat(claims).hasValue(1);assertThat(deliveries).hasValue(2);
+            verify(assistant,times(1)).runForJob(any(),anyString(),anyString());assertThat(claims).hasValue(1);assertThat(deliveries).hasValue(2);
             assertThat(received.get().path("result").path("answer").asText()).isEqualTo("fixture-answer");
             try(var state=new EncryptedAiState(mapper,directory.resolve("private/state.bin").toString(),directory.resolve("key").toString())) {
                 assertThat(state.read().isEmpty()).isTrue();
@@ -98,7 +98,7 @@ class GyingBridgeRecoveryTest {
     @Test void leaseCanRenewWhileInferenceRuns() throws Exception {
         serve();AssistantService assistant=mock(AssistantService.class);
         CountDownLatch entered=new CountDownLatch(1),finish=new CountDownLatch(1);
-        when(assistant.run(any())).thenAnswer(call->{entered.countDown();if(!finish.await(10,TimeUnit.SECONDS))throw new IllegalStateException();return mapper.createObjectNode().put("scope","gying").put("answer","ok");});
+        when(assistant.runForJob(any(),anyString(),anyString())).thenAnswer(call->{entered.countDown();if(!finish.await(10,TimeUnit.SECONDS))throw new IllegalStateException();return mapper.createObjectNode().put("scope","gying").put("answer","ok");});
         var bridge=open(assistant);ExecutorService runner=Executors.newSingleThreadExecutor();
         try {
             var future=runner.submit(bridge::pollOnce);assertThat(entered.await(5,TimeUnit.SECONDS)).isTrue();
@@ -107,11 +107,11 @@ class GyingBridgeRecoveryTest {
     }
     @Test void conflictingServerLeaseDiscardsOldReceiptWithoutDeliveringIt() throws Exception {
         serve();AssistantService assistant=mock(AssistantService.class);
-        when(assistant.run(any())).thenReturn(mapper.createObjectNode().put("scope","gying").put("answer","ok"));
+        when(assistant.runForJob(any(),anyString(),anyString())).thenReturn(mapper.createObjectNode().put("scope","gying").put("answer","ok"));
         var bridge=open(assistant);
         try {
             bridge.pollOnce();renewStatus.set(409);bridge.renewOnce();bridge.pollOnce();
-            assertThat(deliveries).hasValue(1);verify(assistant,times(1)).run(any());
+            assertThat(deliveries).hasValue(1);verify(assistant,times(1)).runForJob(any(),anyString(),anyString());
         } finally {bridge.close();server.stop(0);}
     }
     @Test void corruptCheckpointPreventsClaimAndInference() throws Exception {

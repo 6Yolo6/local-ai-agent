@@ -24,6 +24,8 @@ public class AssistantService {
     private final GyingTools gyingTools;
     private final TraceStore traces;
     private final ObjectMapper mapper;
+    private GyingResearchService research;
+    @org.springframework.beans.factory.annotation.Autowired public void research(GyingResearchService research){this.research=research;}
     private final Semaphore activeRequest = new Semaphore(1);
     private final ThreadPoolExecutor toolExecutor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
             new ArrayBlockingQueue<>(1), runnable -> { Thread thread = new Thread(runnable, "assistant-read-only-tool"); thread.setDaemon(true); return thread; },
@@ -68,7 +70,8 @@ public class AssistantService {
         return output;
     }
 
-    public ObjectNode run(JsonNode request) {
+    public ObjectNode run(JsonNode request) { return runForJob(request,"",""); }
+    public ObjectNode runForJob(JsonNode request,String jobId,String lease) {
         String requestId = UUID.randomUUID().toString();
         ArrayNode trace = mapper.createArrayNode();
         ObjectNode result = mapper.createObjectNode().put("requestId", requestId).put("model", ollama.modelName()).put("answer", "");
@@ -91,6 +94,7 @@ public class AssistantService {
         int malformedAnswers = 0;
         int ungroundedAnswers = 0;
         try {
+            if("gying".equals(scope)&&research!=null&&research.enabled())return research.run(request,jobId,lease,deadline);
             int roundLimit = Math.max(2, Math.min(maxRounds, 8));
             int callLimit = Math.max(1, Math.min(maxToolCalls, 8));
             for (int round = 0; round < roundLimit; round++) {
@@ -230,8 +234,16 @@ public class AssistantService {
     private ArrayNode validatedMessages(JsonNode request, String scope) {
         if (request == null || !request.isObject()) throw new IllegalArgumentException("请求必须为 JSON 对象");
         Iterator<String> fields = request.fieldNames();
-        while (fields.hasNext()) if (!Set.of("message", "history", "scope").contains(fields.next())) throw new IllegalArgumentException("请求包含未知字段，仅支持 message、history、scope");
+        while (fields.hasNext()) if (!Set.of("message", "history", "scope", "context").contains(fields.next())) throw new IllegalArgumentException("请求包含未知字段，仅支持 message、history、scope");
         String message = checkedContent(request.get("message"), 3000, "message");
+        if(request.has("context")){
+            JsonNode context=request.path("context");
+            if(!"gying".equals(scope)||!context.isObject()||context.toString().length()>10000)throw new IllegalArgumentException("无效的片库上下文");
+            context.fieldNames().forEachRemaining(k->{if(!Set.of("queryPlan","candidateIds","candidates").contains(k))throw new IllegalArgumentException("上下文包含未知字段");});
+            for(String k:java.util.List.of("candidateIds","candidates"))if(context.has(k)&&(!context.path(k).isArray()||context.path(k).size()>30))throw new IllegalArgumentException("上下文候选数量无效");
+            if(context.has("queryPlan")&&!context.path("queryPlan").isObject())throw new IllegalArgumentException("无效的上一轮计划");
+            for(JsonNode candidate:context.path("candidates"))if(!candidate.isObject()||candidate.toString().length()>500)throw new IllegalArgumentException("上下文候选格式无效");
+        }
         ArrayNode messages = mapper.createArrayNode();
         messages.addObject().put("role", "system").put("content", "gying".equals(scope) ? """
                 你是影视只读助手，用中文简洁回答。片名用searchMovies，详情用getMovieDetails。剧情、主题或联网资料用searchMovieWeb。必须真实调用工具，不凭记忆编造。

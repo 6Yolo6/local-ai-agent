@@ -32,7 +32,10 @@ public class OllamaService {
             .connectTimeout(5, TimeUnit.SECONDS).readTimeout(120, TimeUnit.SECONDS)
             .writeTimeout(10, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build();
 
+    @Value("${LOCAL_AI_GYING_RESEARCH_MODEL:qwen3:4b-instruct-2507-q4_K_M}")
+    private String researchModel;
     public String modelName() { return modelName; }
+    public String researchModelName() { return researchModel==null||researchModel.isBlank()?modelName:researchModel; }
 
     /** Only loopback endpoints are permitted so workspace evidence cannot leave this machine. */
     private String endpoint(String path) throws OllamaException {
@@ -62,6 +65,34 @@ public class OllamaService {
         return safe;
     }
 
+    public ObjectNode structured(ArrayNode messages,JsonNode schema,long remainingMillis)throws IOException {
+        if(!structuredFits(messages))throw new OllamaException("CONTEXT_TOO_LONG","查询内容超过模型上下文预算，请缩短问题");
+        ObjectNode request=baseRequest();request.put("model",researchModelName());request.set("messages",messages);request.set("format",schema);
+        request.with("options").put("num_predict",768);
+        JsonNode response=post("/api/chat",request,remainingMillis);
+        if(response.path("done_reason").asText().equals("length"))throw new OllamaException("MODEL_OUTPUT_TRUNCATED","模型查询计划未完整生成");
+        JsonNode result=mapper.readTree(response.path("message").path("content").asText(""));
+        if(result==null||!result.isObject())throw new OllamaException("MODEL_RESPONSE_INVALID","模型未返回有效查询计划");return (ObjectNode)result;
+    }
+    /** The schema is a decoding grammar; budget the actual messages and reserve output/framing. */
+    public boolean structuredFits(ArrayNode messages){
+        int ascii=0,other=0;String text=messages.toString();for(int i=0;i<text.length();i++){if(text.charAt(i)<=127)ascii++;else other++;}
+        return (ascii+1)/2+other*2+12*messages.size()<=Math.max(1024,Math.min(contextLength,8192))-768-256;
+    }
+    public String modelDigest(String name)throws IOException{
+        String wanted=name.contains(":")?name:name+":latest";
+        for(JsonNode entry:get("/api/tags").path("models"))if(wanted.equals(entry.path("name").asText())){
+            String digest=entry.path("digest").asText();if(digest.matches("[a-f0-9]{64}"))return digest;
+        }
+        throw new OllamaException("EMBEDDING_MODEL_MISMATCH","向量模型不存在或摘要无效");
+    }
+    /** Embeddings run on CPU and are unloaded after use; no second GPU allocation. */
+    public ArrayNode embed(String model,java.util.List<String> texts,long remainingMillis)throws IOException {
+        if(texts.isEmpty()||texts.size()>32||texts.stream().anyMatch(t->t.length()>6000))throw new OllamaException("EMBEDDING_INPUT_INVALID","无效的向量查询");
+        ObjectNode request=mapper.createObjectNode().put("model",model).put("truncate",false).put("keep_alive",0);request.set("input",mapper.valueToTree(texts));request.putObject("options").put("num_gpu",0).put("num_ctx",4096);
+        JsonNode result=post("/api/embed",request,remainingMillis).path("embeddings");
+        if(!result.isArray()||result.size()!=texts.size())throw new OllamaException("EMBEDDING_RESPONSE_INVALID","向量响应格式无效");return (ArrayNode)result;
+    }
     private ObjectNode baseRequest() {
         ObjectNode request = mapper.createObjectNode().put("model", modelName).put("stream", false).put("think", think);
         request.putObject("options").put("num_ctx", Math.max(1024, Math.min(contextLength, 8192)))

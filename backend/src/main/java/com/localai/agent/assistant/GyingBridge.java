@@ -94,12 +94,12 @@ public class GyingBridge {
                 if(!validId(id) || !validId(lease))return;
                 JsonNode request=claim.path("request");
                 ObjectNode input=mapper.createObjectNode().put("scope","gying");
-                input.set("message",request.path("message")); input.set("history",request.path("history"));
+                input.set("message",request.path("message")); input.set("history",request.path("history")); if(request.path("context").isObject())input.set("context",request.path("context"));
                 pending=mapper.createObjectNode().put("jobId",id).put("lease",lease)
                         .put("retainUntil",Instant.now().plusSeconds(900).toString());
                 checkpoint(); // Persist the attempt before model execution; an interrupted attempt is never replayed.
                 ObjectNode result;
-                try { result=request.has("purpose")?assistant.interpretSearch(request):assistant.run(input); }
+                try { result=request.has("purpose")?assistant.interpretSearch(request):assistant.runForJob(input,id,lease); }
                 catch(Exception e) { result=failure("BRIDGE_EXECUTION_FAILED","本机查询未完成，请重试"); }
                 pending.set("result",result);
                 checkpoint(); // Delivery is allowed only after the result is durable.

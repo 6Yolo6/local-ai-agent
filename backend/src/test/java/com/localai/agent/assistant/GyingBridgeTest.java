@@ -16,7 +16,7 @@ class GyingBridgeTest {
  @TempDir Path temp;
  @Test void claimsOnlyCatalogScopeAndRetriesDeliveryWithoutReplayingInference() throws Exception {
   ObjectMapper mapper=new ObjectMapper();AssistantService assistant=mock(AssistantService.class);
-  when(assistant.run(any())).thenReturn(mapper.createObjectNode().put("scope","gying").put("answer","fixture"));
+  when(assistant.runForJob(any(),anyString(),anyString())).thenReturn(mapper.createObjectNode().put("scope","gying").put("answer","fixture"));
   HttpServer server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
   server.setExecutor(Executors.newCachedThreadPool(r->{Thread t=new Thread(r);t.setDaemon(true);return t;}));
   AtomicInteger claims=new AtomicInteger(), deliveries=new AtomicInteger();AtomicReference<ObjectNode> received=new AtomicReference<>();
@@ -38,7 +38,7 @@ class GyingBridgeTest {
   GyingBridge bridge=new GyingBridge(assistant,mapper,"http://127.0.0.1:"+server.getAddress().getPort(),token.toString());
   try {
    bridge.start();assertThat(completed.await(10,TimeUnit.SECONDS)).isTrue();
-   verify(assistant,times(1)).run(argThat(request->"gying".equals(request.path("scope").asText())));
+   verify(assistant,times(1)).runForJob(argThat(request->"gying".equals(request.path("scope").asText())),eq(id),eq(lease));
    assertThat(received.get().path("lease").asText()).isEqualTo(lease);
    assertThat(deliveries).hasValue(2);
   } finally {bridge.close();server.stop(0);}

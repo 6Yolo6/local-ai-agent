@@ -92,3 +92,10 @@
 回退旧JAR与有效覆盖保存在`E:/gying-tools/releases/ai-reliability-20261023/`。两个加密检查点`G:/gying-backups/20261023T044352.387300Z`与`G:/gying-backups/20261023T045302.843250Z`每份14产物hash/完整认证解密通过，含状态key和QQ/微博卷；不是异机恢复。回退先排空，保留新状态及key，旧包不恢复新增任务。12:43–12:54运行观察ERROR/Exception为0；仅本机backend/GYing backend替换，前端/router/Ollama保持原实例。生产11项安全门禁失败继续保留，本次为同候选明确批准。
 
 现役日常备份配置已追加本机state/key、GYing状态key卷及部署覆盖；原配置加密/认证保存，dry-run通过，下一次日常完整运行尚未验收。
+
+
+## 2026-10-25 查询修复候选
+
+仅 GYING 结构化查询增加独立模型配置、公开元数据向量索引、受租约保护的片库原文核验与实际 Bing 搜索。候选 Agent verify 82/82，构建器 5/5；1.7B/普通4B/指令4B真实开发对照不等于人工质量全部通过。Ollama仍0.11.11，指令4B 4096上下文实测GPU约3.12GiB；新引擎兼容性未验证，不直接升级到Qwen3.5。Node当前24.22.1（10月23日已升级），上面10月18日20.17.0保留历史日期。
+
+当前运行JAR仍2bd021c614de620fe594c0096dc892313f221093c1f18ee37bed8a414865e815；候选936a1d2ef88227df94188cbb8b562a3fa8605ef68cedac3872a5f0584cc77ca6保存在`E:/gying-tools/releases/ai-query-plan-v2-20261025/agent-candidate.jar`，未平滑替换。Movie生产安全仍59 PASS/11 FAIL；候选授权不能从历史部署推定。详见[候选边界](gying-query-plan-v2.md)。
