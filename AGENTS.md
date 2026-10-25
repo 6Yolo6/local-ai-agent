@@ -19,9 +19,9 @@ Vue 发送 message、history 与 scope → AssistantController → AssistantServ
 
 旧 MCP 工具通过 McpToolsConfig 中 MethodToolCallbackProvider 注册，提供 SSE /sse 和消息端点 /mcp/message。旧 MCP 含写文件、执行命令和社群工具，不能描述为只读。不要将服务默认暴露到外网，不要在测试中发布真实内容。
 
-## GYING 查询候选（2026-10-25）
+## GYING 结构化查询（2026-10-25）
 
-已授权的影视修复增加结构化 MovieQueryPlanner/GyingResearchService：受限 POST 仅访问固定 loopback 的 `/api/internal/ai/catalog/query`（job/lease、结构化条件、公开元数据候选），GET documents 仅导出公共元数据。桥接凭据来自既有私有文件，不使用用户指定 URL；不得执行 SQL、转存、发帖或管理写入。模型专用配置 `LOCAL_AI_GYING_RESEARCH_MODEL`，语义索引路径来自环境，不硬编码本机盘符；工作区模式保持原 1.7B 与四项只读工具。生产尚未替换，候选细节见 `docs/gying-query-plan-v2.md`。
+已授权的影视修复增加结构化 MovieQueryPlanner/GyingResearchService：受限 POST 仅访问固定 loopback 的 `/api/internal/ai/catalog/query`（job/lease、结构化条件、公开元数据候选），GET documents 仅导出公共元数据。桥接凭据来自既有私有文件，不使用用户指定 URL；不得执行 SQL、转存、发帖或管理写入。模型专用配置 `LOCAL_AI_GYING_RESEARCH_MODEL`，语义索引路径来自环境，不硬编码本机盘符；工作区模式保持原 1.7B 与四项只读工具。2026-10-25已部署本轮结构化检索，具体运行包、索引和验收限制见 `docs/gying-query-plan-v2.md`。
 
 ## 验证与运行
 
