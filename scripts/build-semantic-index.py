@@ -1,5 +1,5 @@
 """Build a public movie-metadata float32 index with resumable, model-specific CPU embedding cache."""
-import argparse, array, hashlib, json, math, os, re, shutil, struct, sys, time, urllib.request
+import argparse, array, hashlib, json, math, os, re, shutil, struct, sys, time, urllib.request, urllib.error
 from pathlib import Path
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -21,6 +21,19 @@ def request(url,body=None,headers=None,timeout=240):
         if len(raw)>3*1024*1024:raise ValueError("Response exceeds size limit")
         return json.loads(raw)
 
+def catalog_page(url,token,page):
+    # Retry only this read-only fixed-origin export, honoring the server's bounded delay.
+    for attempt in range(3):
+        try:
+            return request(url,headers={'X-AI-Bridge-Token':token},timeout=30)
+        except urllib.error.HTTPError as error:
+            delay=error.headers.get('Retry-After','')
+            if error.code!=429 or attempt==2 or not delay.isdigit() or not 0<=int(delay)<=60:
+                raise
+            seconds=max(1,int(delay))
+            print(json.dumps({'catalogRateLimited':True,'page':page,'waitSeconds':seconds}),flush=True)
+            time.sleep(seconds)
+
 def documents(catalog,base_url,token_file):
     if catalog:
         raw=json.loads(Path(catalog).read_text(encoding='utf-8'))['movies'];docs=[]
@@ -36,9 +49,10 @@ def documents(catalog,base_url,token_file):
     base_url=checked_origin(base_url)
     token=Path(token_file).read_text().strip();docs=[]
     for page in range(1,501):
-        data=request(base_url.rstrip('/')+f'/api/internal/ai/catalog/documents?page={page}&size=100',headers={'X-AI-Bridge-Token':token},timeout=30)
+        data=catalog_page(base_url.rstrip('/')+f'/api/internal/ai/catalog/documents?page={page}&size=100',token,page)
         docs.extend(data['documents'])
         if len(docs)>=data['total'] or not data['documents']:break
+        time.sleep(1)  # Export coexists with the two-second bridge heartbeat.
     return docs
 
 def valid_cache(path):
