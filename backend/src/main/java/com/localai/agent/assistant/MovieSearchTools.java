@@ -19,6 +19,7 @@ import jakarta.annotation.PreDestroy;
 public class MovieSearchTools {
     private final ObjectMapper mapper;private final OkHttpClient client;
     private static final Set<String> SOURCES=Set.of("wikipedia.org","imdb.com","themoviedb.org","douban.com","baidu.com","qq.com","iqiyi.com","youku.com","bilibili.com","netflix.com","justwatch.com","rottentomatoes.com","variety.com","hollywoodreporter.com","disneyplus.com","hulu.com","primevideo.com","bbc.com","mubi.com","1905.com","mtime.com","movieinsider.com");
+    @org.springframework.beans.factory.annotation.Autowired
     public MovieSearchTools(ObjectMapper mapper){this(mapper,new OkHttpClient.Builder().proxy(Proxy.NO_PROXY).followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false).connectTimeout(3,TimeUnit.SECONDS).callTimeout(12,TimeUnit.SECONDS).build());}
     MovieSearchTools(ObjectMapper mapper,OkHttpClient client){this.mapper=mapper;this.client=client;}
     public ObjectNode search(String query){
