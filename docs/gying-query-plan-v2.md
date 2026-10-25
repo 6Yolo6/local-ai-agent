@@ -8,6 +8,8 @@
 
 构建默认 CPU；监督初始化可显式 `--gpu-build`，运行中查询仍 CPU，避免同时申请第二份 GPU 模型。构建器复用模型 digest 隔离缓存、发布前再次核对模型、备份旧文件并原子替换。应在模型调用空闲窗口构建；索引只含公开影片元数据，不含用户、账号或资源地址。
 
+初始化的 `--batch` 是每次提交的影片数（1–32）；`--num-batch` 是推理计算批量（256/512/1024，默认512）。本机对同16份输入实测512/1024的向量余弦均为1，可在监督初始化时选1024；性能测量含排队/加载，不能推广为固定加速倍数，不改变在线CPU查询配置。
+
 ```
 python -X utf8 scripts/build-semantic-index.py --output <外部索引路径>
 python -X utf8 scripts/build-semantic-index.py --catalog <公开快照路径> --output <外部索引路径> --gpu-build --run

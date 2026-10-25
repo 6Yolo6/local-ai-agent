@@ -59,8 +59,8 @@ def text(stream,value):
     data=value.encode('utf-8');stream.write(struct.pack('>i',len(data)));stream.write(data)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--catalog');p.add_argument('--base-url',default='http://127.0.0.1:8880');p.add_argument('--token-file');p.add_argument('--model',default='bge-m3');p.add_argument('--ollama',default='http://127.0.0.1:11434');p.add_argument('--output',type=Path,required=True);p.add_argument('--batch',type=int,default=8);p.add_argument('--run',action='store_true');p.add_argument('--gpu-build',action='store_true',help='Use GPU only for supervised initial build; queries remain CPU');args=p.parse_args()
-    if not args.run:print(json.dumps({'mode':'plan','model':args.model,'cpuOnly':not args.gpu_build,'output':str(args.output)}));return
+    p=argparse.ArgumentParser();p.add_argument('--catalog');p.add_argument('--base-url',default='http://127.0.0.1:8880');p.add_argument('--token-file');p.add_argument('--model',default='bge-m3');p.add_argument('--ollama',default='http://127.0.0.1:11434');p.add_argument('--output',type=Path,required=True);p.add_argument('--batch',type=int,default=8);p.add_argument('--num-batch',type=int,choices=[256,512,1024],default=512);p.add_argument('--run',action='store_true');p.add_argument('--gpu-build',action='store_true',help='Use GPU only for supervised initial build; queries remain CPU');args=p.parse_args()
+    if not args.run:print(json.dumps({'mode':'plan','model':args.model,'cpuOnly':not args.gpu_build,'numBatch':args.num_batch,'output':str(args.output)}));return
     if not 1<=args.batch<=32:raise ValueError('Invalid batch')
     args.ollama=checked_origin(args.ollama)
     docs=documents(args.catalog,args.base_url,args.token_file);ids=[d['id'] for d in docs]
@@ -74,7 +74,7 @@ def main():
     for offset in range(0,len(docs),args.batch):
         batch=docs[offset:offset+args.batch];missing=[d for d in batch if not valid_cache(cache/(d['fingerprint']+'.bin'))]
         if missing:
-            result=request(args.ollama+'/api/embed',{'model':args.model,'input':[d['embeddingText'] for d in missing],'options':{'num_gpu':99 if args.gpu_build else 0,'num_ctx':4096},'truncate':False,'keep_alive':'5m'},timeout=240)
+            result=request(args.ollama+'/api/embed',{'model':args.model,'input':[d['embeddingText'] for d in missing],'options':{'num_gpu':99 if args.gpu_build else 0,'num_ctx':4096,'num_batch':args.num_batch},'truncate':False,'keep_alive':'5m'},timeout=240)
             if len(result['embeddings'])!=len(missing):raise ValueError('Invalid embedding count')
             for doc,vector in zip(missing,result['embeddings']):
                 if not 32<=len(vector)<=4096 or not all(math.isfinite(x) for x in vector):raise ValueError('Invalid embedding vector')
