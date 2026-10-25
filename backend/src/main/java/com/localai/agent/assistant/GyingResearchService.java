@@ -69,7 +69,7 @@ public class GyingResearchService {
                         String title=judgement.path("identifiedTitle").asText("");
                         String normalizedTitle=title.toLowerCase(Locale.ROOT).replaceAll("[\\p{P}\\s]","");
                         if(!title.isBlank()&&selected.stream().noneMatch(i->sources.get(i).path("title").asText().toLowerCase(Locale.ROOT).replaceAll("[\\p{P}\\s]","").contains(normalizedTitle)))title="";
-                        if(!title.isBlank()&&title.length()<=100){
+                        if(!title.isBlank()&&title.length()<=100&&!(effective.path("titles").size()>0&&found.path("movies").size()==1)){
                             // A model suggestion becomes a candidate only after a new actual catalog query.
                             ObjectNode candidate=effective.deepCopy();candidate.put("intent","search").put("inheritContext",false).putArray("titles").add(title);candidate.put("limit",5);
                             ObjectNode follow=query.deepCopy();follow.set("plan",candidate);follow.remove(List.of("denseCandidates","message","candidateLimit"));start=System.nanoTime();ObjectNode located=catalog.query(follow);

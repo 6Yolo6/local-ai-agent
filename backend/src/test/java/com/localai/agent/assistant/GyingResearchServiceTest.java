@@ -43,4 +43,10 @@ class GyingResearchServiceTest {
         when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[{\"title\":\"样本电影\",\"snippet\":\"样本的剧情\"}]}}"));when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\":[0],\"identifiedTitle\":\"样本\",\"quotes\":[{\"index\":0,\"quote\":\"样本的剧情\"}]}"));
         var r=run();var captor=org.mockito.ArgumentCaptor.forClass(ObjectNode.class);verify(catalog,times(2)).query(captor.capture());var actual=captor.getAllValues().get(1).path("plan");assertThat(actual.path("yearFrom").asInt()).isEqualTo(2020);assertThat(actual.path("excludedDirectors").get(0).asText()).isEqualTo("甲");assertThat(first.path("superseded").asBoolean()).isTrue();assertThat(r.path("answer").asText()).contains("保留原筛选条件");
     }
+    @Test void webConfirmationOfAnAlreadyLocatedTitlePreservesItsPlotAnswer()throws Exception{
+        var p=plan("{\"intent\":\"web\",\"titles\":[\"样本\"]}");var f=found(p,"a");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(f);
+        when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[{\"title\":\"样本电影\",\"snippet\":\"宇航员寻找返回地球的航线。\"}]}}"));
+        when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\":[0],\"identifiedTitle\":\"样本\",\"quotes\":[{\"index\":0,\"quote\":\"返回地球的航线\"}]}"));
+        var r=run();assertThat(r.path("answer").asText()).contains("片库简介", "返回地球的航线");assertThat(r.path("queryPlan").path("intent").asText()).isEqualTo("web");assertThat(f.path("superseded").asBoolean()).isFalse();verify(catalog).query(any());
+    }
 }
