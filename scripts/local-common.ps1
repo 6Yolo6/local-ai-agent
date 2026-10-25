@@ -6,6 +6,8 @@ if (-not (Test-Path -LiteralPath $ConfigPath)) {
     throw 'Run scripts/setup-local.ps1 first to detect this machine and save .local/environment.json.'
 }
 $LocalConfig = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+. (Join-Path $PSScriptRoot 'gying-research-config.ps1')
+Set-GyingResearchEnvironment $LocalConfig
 $JavaExe = Join-Path $LocalConfig.javaHome 'bin/java.exe'
 $MavenExe = Join-Path $LocalConfig.mavenHome 'bin/mvn.cmd'
 $NodeExe = $LocalConfig.nodeExe
