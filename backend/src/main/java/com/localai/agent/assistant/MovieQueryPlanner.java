@@ -130,7 +130,7 @@ public class MovieQueryPlanner {
         if(!invented.isEmpty())throw new OllamaService.OllamaException("QUERY_PLAN_UNGROUNDED","模型加入了原问题没有给出的实体或标识，请重新表述。");
         String semanticText=result.path("semanticText").asText();
         if(result.path("intent").asText().equals("similar")&&!result.path("seedTitle").asText().isBlank()){
-            String seed=result.path("seedTitle").asText();semanticText=semanticText.replace("《"+seed+"》","").replace(seed,"");
+            String seed=result.path("seedTitle").asText();semanticText=semanticText.replace("《"+seed+"》","");
         }
         semanticText=semanticText.replaceAll("^(?:类似|相似)\\s*(?:的)?\\s*","").replaceAll("^[\\s的]+","").replaceAll("(?:的)?(?:电影|影片|作品|电视剧|剧集|动漫|题材)+$","").trim();
         if(result.has("semanticText"))result.put("semanticText",semanticText);

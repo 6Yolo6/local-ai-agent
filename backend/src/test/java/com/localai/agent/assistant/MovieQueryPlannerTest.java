@@ -32,6 +32,7 @@ class MovieQueryPlannerTest {
  @Test void semanticRetrievalOmitsRequestSuffixesAndDuplicateSimilarityTitles()throws Exception{
   var p=extract("类似《样片》的文化沟通题材电影","{\"intent\": \"similar\", \"seedTitle\": \"样片\", \"semanticText\": \"类似《样片》的文化沟通题材电影\"}");
   assertThat(p.path("semanticText").asText()).isEqualTo("文化沟通");assertThat(p.path("seedTitle").asText()).isEqualTo("样片");
+  assertThat(extract("类似《雨》的雨天记忆题材电影","{\"intent\":\"similar\",\"seedTitle\":\"雨\",\"semanticText\":\"类似《雨》的雨天记忆题材电影\"}").path("semanticText").asText()).isEqualTo("雨天记忆");
   assertThat(extract("找讲相互信任的电影","{\"intent\": \"search\", \"semanticText\": \"相互信任的电影\"}").path("semanticText").asText()).isEqualTo("相互信任");
  }
 
