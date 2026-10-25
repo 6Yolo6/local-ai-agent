@@ -51,12 +51,12 @@ public class GyingResearchService {
                     if(found.path("movies").isEmpty())return failure(result,searched.path("error").path("code").asText("WEB_UNAVAILABLE"),"片库未找到候选，联网补查也未完成，请稍后重试或补充线索。");
                     result.put("partial",true);answer+="\n联网补充暂不可用，以下只列出片库已核实的资料。";
                 }else{
-                    ArrayNode rawSources=(ArrayNode)searched.path("data").path("webResults");
+                    ArrayNode rawSources=(ArrayNode)searched.path("data").path("webResults");searched.with("data").put("rawReturned",rawSources.size());
                     if(effective.path("titles").size()>0&&found.path("movies").size()==1){
                         ArrayNode matched=identityCompatibleSources(rawSources,found.path("movies").get(0));
                         searched.with("data").put("identityFilteredCount",rawSources.size()-matched.size()).set("webResults",matched);rawSources=matched;
                     }
-                    final ArrayNode sources=rawSources;ObjectNode judgement;
+                    final ArrayNode sources=rawSources;searched.with("data").put("identityReturned",sources.size());ObjectNode judgement;
                     try{judgement=judgeWeb(request,effective,sources,deadline);}catch(IOException e){
                         searched.with("data").putArray("webResults");trace.add(step(id,"planning","web-relevance","error",start));
                         if(found.path("movies").isEmpty())return failure(result,e instanceof OllamaService.OllamaException oe?oe.code():"WEB_RELEVANCE_FAILED","已联网，但搜索资料未完成相关性核对，请稍后重试。");
@@ -68,8 +68,17 @@ public class GyingResearchService {
                         if(i>=0&&i<sources.size()&&text.length()>=4&&text.length()<=100&&(sources.get(i).path("snippet").asText().contains(text)||sources.get(i).path("title").asText().contains(text)))webQuotes.put(i,text);
                     }
                     for(JsonNode i:judgement.path("relevantIndices"))if(i.isIntegralNumber()&&i.asInt()>=0&&i.asInt()<sources.size()&&!selected.contains(i.asInt())&&webQuotes.containsKey(i.asInt()))selected.add(i.asInt());
+                    boolean identityOnly=false;
+                    if(selected.isEmpty()&&effective.path("titles").size()>0&&found.path("movies").size()==1){
+                        JsonNode known=found.path("movies").get(0);
+                        for(int i=0;i<sources.size();i++)if(sameFilmIdentity(sources.get(i),known)){selected.add(i);identityOnly=true;}
+                    }
                     ArrayNode relevant=mapper.createArrayNode();for(int i:selected)relevant.add(sources.get(i));searched.with("data").set("webResults",relevant);searched.with("data").put("returned",relevant.size()).put("relevanceChecked",true);
+                    if(identityOnly)searched.with("data").put("evidenceScope","film-identity");
                     if(relevant.isEmpty())answer+="\n本次联网结果没有足够相关的影视依据，请补充人物、场景、语言或大致年代。";
+                    else if(identityOnly){
+                        answer+="\n联网定位到同一影片条目："+String.join("；",selected.stream().map(i->sources.get(i).path("title").asText()).toList())+"。实际链接与查询时间列在下方；以上剧情来自片库，搜索摘要仅核对影片身份，未验证剧情。";
+                    }
                     else{
                         String title=judgement.path("identifiedTitle").asText("");
                         String normalizedTitle=title.toLowerCase(Locale.ROOT).replaceAll("[\\p{P}\\s]","");
@@ -90,6 +99,15 @@ public class GyingResearchService {
             return result.put("answer",answer).put("status","completed");
         }catch(IOException e){return failure(result,e instanceof OllamaService.OllamaException oe?oe.code():"CATALOG_RESEARCH_UNAVAILABLE","查询计划或片库查询未完成，请稍后重试。");}
         catch(RuntimeException e){return failure(result,"QUERY_PLAN_INVALID","本次条件未能解析为有效查询，请补充或拆分要求。");}
+    }
+    private boolean sameFilmIdentity(JsonNode source,JsonNode movie){
+        if(!movie.path("category").asText().equals("mv")||movie.path("year").asInt(0)<=0)return false;
+        for(String field:List.of("titleEn","titleCn")){
+            String name=movie.path(field).asText();if(name.isBlank())continue;
+            String expression="^\\s*"+java.util.regex.Pattern.quote(name)+"\\s*\\("+movie.path("year").asInt()+"(?:\\s+(?:film|movie))?\\).*$";
+            if(java.util.regex.Pattern.compile(expression,java.util.regex.Pattern.CASE_INSENSITIVE|java.util.regex.Pattern.UNICODE_CASE|java.util.regex.Pattern.DOTALL).matcher(source.path("title").asText()).matches())return true;
+        }
+        return false;
     }
     private ArrayNode identityCompatibleSources(ArrayNode sources,JsonNode movie){
         ArrayNode valid=mapper.createArrayNode();String category=movie.path("category").asText();int knownYear=movie.path("year").asInt(0);

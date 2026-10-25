@@ -58,4 +58,13 @@ class GyingResearchServiceTest {
         assertThat(r.path("answer").asText()).contains("返回地球的航线").doesNotContain("同名电视剧","重拍版本");assertThat(data.path("identityFilteredCount").asInt()).isEqualTo(2);assertThat(data.path("webResults").size()).isEqualTo(1);
     }
 
+    @Test void exactFilmIdentityLinkIsKeptWithoutClaimingTheSnippetVerifiesItsPlot()throws Exception{
+        var p=plan("{\"intent\": \"web\", \"titles\": [\"样本\"]}");var f=found(p,"a");((ObjectNode)f.path("movies").get(0)).put("category","mv").put("year",2001).put("titleEn","Sample");
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(f);
+        when(web.search(anyString())).thenReturn(plan("{\"ok\": true, \"data\": {\"webResults\": [{\"title\": \"Sample (2001) - IMDb\", \"url\": \"https://www.imdb.com/title/tt0000001/\", \"snippet\": \"Directed by a director. Cast: two actors.\"}]}}"));
+        when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\": [], \"identifiedTitle\": \"\", \"quotes\": []}"));
+        var r=run();var data=r.path("trace").get(2).path("result").path("data");
+        assertThat(r.path("answer").asText()).contains("片库简介","联网定位到同一影片条目","剧情来自片库","未验证剧情");assertThat(data.path("rawReturned").asInt()).isEqualTo(1);assertThat(data.path("returned").asInt()).isEqualTo(1);assertThat(data.path("evidenceScope").asText()).isEqualTo("film-identity");verify(catalog).query(any());
+    }
+
 }
