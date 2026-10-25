@@ -94,8 +94,12 @@
 现役日常备份配置已追加本机state/key、GYing状态key卷及部署覆盖；原配置加密/认证保存，dry-run通过，下一次日常完整运行尚未验收。
 
 
-## 2026-10-25 查询修复候选
+## 2026-10-25 查询修复与服务恢复
 
-仅 GYING 结构化查询增加独立模型配置、公开元数据向量索引、受租约保护的片库原文核验与实际 Bing 搜索。候选 Agent verify 82/82，构建器 5/5；1.7B/普通4B/指令4B真实开发对照不等于人工质量全部通过。Ollama仍0.11.11，指令4B 4096上下文实测GPU约3.12GiB；新引擎兼容性未验证，不直接升级到Qwen3.5。Node当前24.22.1（10月23日已升级），上面10月18日20.17.0保留历史日期。
+GYING结构化查询增加独立影视模型、公开元数据向量索引、原文核验与真实Bing搜索，16:00–16:01已部署。早期82项候选与旧运行包记录是上线前状态；最终查询部署87项verify和装配回归通过，后续服务补丁91项verify通过，不再将早期候选写成当前包。Ollama保持0.11.11；影视为`qwen3:4b-instruct-2507-q4_K_M`，工作区仍1.7B。Node当前24.22.1，上面10月18的20.17.0是历史基线。
 
-当前运行JAR仍2bd021c614de620fe594c0096dc892313f221093c1f18ee37bed8a414865e815；候选936a1d2ef88227df94188cbb8b562a3fa8605ef68cedac3872a5f0584cc77ca6保存在`E:/gying-tools/releases/ai-query-plan-v2-20261025/agent-candidate.jar`，未平滑替换。Movie生产安全仍59 PASS/11 FAIL；候选授权不能从历史部署推定。详见[候选边界](gying-query-plan-v2.md)。
+17:19–17:20仅平滑替换本机backend，当前代码`cd79797`、运行JAR SHA`33d9b6748cdac41f82e7d7ac9afbcda4f672d2bf71fce640c235f8e3efdf3c37`。当前11,272条生效索引SHA`f74cb9c6afd7c5b029305a3c0a141a3d1348eb5116285fb7de43bcdbc9b43eb4`。启动器默认WMI创建独立隐藏启动壳，避免受调用方Job退出影响；内部ServiceHost若仍在Job中拒绝启动。6项真实合成Job行为与9项研究配置验证通过，完整JAR隔离健康/握手/优雅退出通过。只用`scripts/start-local.ps1`或原start-all入口恢复已选定服务，不绕过受管启动器手工后台启动。
+
+片库冷读取原10秒超时改为read/call30秒，仍受总体deadline约束；真实条件/语义/Bing及生产只读队列已完成，9入口符合预期。小模型仍有额外人物排除/年份边界偏差，不能把completed等同全正确。网站登录条件查询未复验；未转存、发帖或发消息。回退三份age认证材料在`G:/gying-backups/ai-agent-20261025T091941.886931Z`，只恢复应用并保留当前加密state/key。Movie安全58 PASS/11 FAIL/1 UNKNOWN为前序复检，本补丁未关闭原风险。
+
+今晚2026-10-25 20:00 +08单次优雅重启仍Ready；只读绑定及readiness通过，未立即执行或重复登记，重启后仍需ASUS登录恢复。详见[结构化检索](gying-query-plan-v2.md)及Movie仓库`docs/ai-assistant-availability-20261025.md`。

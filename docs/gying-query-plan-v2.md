@@ -21,4 +21,10 @@ python -X utf8 scripts/build-semantic-index.py --catalog <公开快照路径> --
 
 联网记录区分原始返回、身份排除和相关性保留数量。已知影片的条目名/年份精确匹配时，可保留实际搜索链接并标注film-identity，仅核对身份，剧情仍来自片库；不把链接当作已访问的剧情网页。恢复fixture子JVM限制192MiB堆并补退出日志，87项verify通过（含Spring装配回归）。
 
-实际JAR代码提交`8a65287`、SHA`b7bd517cbe6f7c5b8cdf01ce0d8872460958fc8b108653d7c8882fa74ff7f399`，完整JAR隔离健康/握手/优雅退出通过；首次装配失败回退证据保留。生产索引11,272条、SHA`f74cb9c6afd7c5b029305a3c0a141a3d1348eb5116285fb7de43bcdbc9b43eb4`，原11,220对照索引/报告provenance不改写。受控GET导出100项分页、1秒节奏与数字Retry-After最多两次重试（每次≤60秒），401/重定向/超界等待不重试；9项行为验证通过。网站真实登录条件查询与定期增量调度未复验/登记。
+16:00部署时JAR代码提交`8a65287`、SHA`b7bd517cbe6f7c5b8cdf01ce0d8872460958fc8b108653d7c8882fa74ff7f399`，完整JAR隔离健康/握手/优雅退出通过；首次装配失败回退证据保留。生产索引11,272条、SHA`f74cb9c6afd7c5b029305a3c0a141a3d1348eb5116285fb7de43bcdbc9b43eb4`，原11,220对照索引/报告provenance不改写。受控GET导出100项分页、1秒节奏与数字Retry-After最多两次重试（每次≤60秒），401/重定向/超界等待不重试；9项行为验证通过。网站真实登录条件查询与定期增量调度未复验/登记。
+
+## 17:19 服务可用性补丁
+
+当前代码`cd79797`、JAR SHA`33d9b6748cdac41f82e7d7ac9afbcda4f672d2bf71fce640c235f8e3efdf3c37`，91项verify与完整JAR15000隔离健康/实例握手/优雅退出通过。冷片库实际15.05秒超过旧10秒read，改为read/call30秒、connect2秒，所有研究片库请求继续受原总体deadline约束。Windows启动默认通过独立WMI隐藏壳，内部ServiceHost处于Job则拒绝；6项真实合成Job与9项研究配置测试通过。
+
+17:19–17:20仅平滑替换Agent backend；首次公网403验收失败已回退，第二次经浏览器标识入口复验部署成功。三份age认证回退在`G:/gying-backups/ai-agent-20261025T091941.886931Z`，保留旧JAR、私有state/key/token/config与旧启动入口。其他本机实例、Movie容器、配置与生效索引hash保持。实际条件27.98秒、语义62.50秒、Bing17.42秒、生产只读队列7.52秒完成；人物额外排除与年份包含边界偏差仍记录，completed不代表全正确。网站登录条件查询未复验，未真实外发；完整证据见Movie仓库`docs/ai-assistant-availability-20261025.md`与`E:/gying-tools/releases/ai-assistant-unavailable-20261025/`。

@@ -30,6 +30,7 @@ Vue 发送 message、history 与 scope → AssistantController → AssistantServ
 - 后端：Maven verify，缓存由本机配置指定。
 - 前端：pnpm install --frozen-lockfile，pnpm build。
 - Router：npm ci，npm test。
+- 后台启动：使用原受管入口；start-local.ps1默认独立WMI启动，内部ServiceHost在Job内会拒绝，禁止绕过独立宿主检查。仅恢复原来运行的服务子集。
 - 启动：scripts/start-all.bat；后端更新时先 stop-local.ps1 -Service backend，再 start-all.bat -Build。
 - 停止：scripts/stop-all.bat，仅结束受管理的本项目进程。
 - 生命周期：`stop-local.ps1 -CheckOnly` 只读预检，`-Graceful -Services ...` 排空选定服务并校验退出确认；任何失败禁止强杀。`-ForReboot` 仅供已安排的正常 Windows 重启，Ollama 无隔离控制台时卸载模型后仍保留进程，交由系统正常关闭。按预检 `runningServices` 子集恢复，不能额外启动原本未启用的服务。
