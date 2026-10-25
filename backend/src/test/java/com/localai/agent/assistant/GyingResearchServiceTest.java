@@ -49,4 +49,13 @@ class GyingResearchServiceTest {
         when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\":[0],\"identifiedTitle\":\"样本\",\"quotes\":[{\"index\":0,\"quote\":\"返回地球的航线\"}]}"));
         var r=run();assertThat(r.path("answer").asText()).contains("片库简介", "返回地球的航线");assertThat(r.path("queryPlan").path("intent").asText()).isEqualTo("web");assertThat(f.path("superseded").asBoolean()).isFalse();verify(catalog).query(any());
     }
+    @Test void explicitSourceIdentityMismatchIsRemovedBeforeModelJudgement()throws Exception{
+        var p=plan("{\"intent\": \"web\", \"titles\": [\"样本\"]}");var f=found(p,"a");((ObjectNode)f.path("movies").get(0)).put("category","mv").put("year",2001);
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(f);
+        when(web.search(anyString())).thenReturn(plan("{\"ok\": true, \"data\": {\"webResults\": [{\"title\": \"样本 (2001)\", \"snippet\": \"返回地球的航线\"}, {\"title\": \"样本 (TV series)\", \"snippet\": \"同名电视剧的故事\"}, {\"title\": \"样本 (1999 film)\", \"snippet\": \"不同年份的重拍版本\"}]}}"));
+        when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\": [0], \"identifiedTitle\": \"样本\", \"quotes\": [{\"index\": 0, \"quote\": \"返回地球的航线\"}]}"));
+        var r=run();var data=r.path("trace").get(2).path("result").path("data");
+        assertThat(r.path("answer").asText()).contains("返回地球的航线").doesNotContain("同名电视剧","重拍版本");assertThat(data.path("identityFilteredCount").asInt()).isEqualTo(2);assertThat(data.path("webResults").size()).isEqualTo(1);
+    }
+
 }

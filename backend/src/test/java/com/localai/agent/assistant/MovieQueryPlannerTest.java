@@ -29,4 +29,10 @@ class MovieQueryPlannerTest {
   var p=extract("联网查《样片》剧情","{\"intent\":\"search\",\"seedTitle\":\"样片\"}");assertThat(p.path("intent").asText()).isEqualTo("web");assertThat(p.path("titles").get(0).asText()).isEqualTo("样片");assertThat(p.has("seedTitle")).isFalse();
   assertThat(extract("第两部主演是谁","{\"intent\":\"search\"}").path("ordinal").asInt()).isEqualTo(2);
  }
+ @Test void semanticRetrievalOmitsRequestSuffixesAndDuplicateSimilarityTitles()throws Exception{
+  var p=extract("类似《样片》的文化沟通题材电影","{\"intent\": \"similar\", \"seedTitle\": \"样片\", \"semanticText\": \"类似《样片》的文化沟通题材电影\"}");
+  assertThat(p.path("semanticText").asText()).isEqualTo("文化沟通");assertThat(p.path("seedTitle").asText()).isEqualTo("样片");
+  assertThat(extract("找讲相互信任的电影","{\"intent\": \"search\", \"semanticText\": \"相互信任的电影\"}").path("semanticText").asText()).isEqualTo("相互信任");
+ }
+
 }

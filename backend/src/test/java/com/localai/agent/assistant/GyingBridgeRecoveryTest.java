@@ -49,11 +49,11 @@ class GyingBridgeRecoveryTest {
         serve();AssistantService assistant=mock(AssistantService.class);
         try {
             String executable=Path.of(System.getProperty("java.home"),"bin",System.getProperty("os.name").startsWith("Windows")?"java.exe":"java").toString();
-            var child=new ProcessBuilder(executable,"-cp",System.getProperty("surefire.test.class.path",System.getProperty("java.class.path")),
+            var child=new ProcessBuilder(executable,"-Xms32m","-Xmx192m","-cp",System.getProperty("surefire.test.class.path",System.getProperty("java.class.path")),
                     GyingBridgeRecoveryTest.class.getName(),directory.toString(),origin()).redirectErrorStream(true)
                     .redirectOutput(directory.resolve("process.log").toFile()).start();
             boolean exited=child.waitFor(30,TimeUnit.SECONDS);if(!exited)child.destroy();
-            assertThat(exited).isTrue();assertThat(child.exitValue()).isZero();
+            assertThat(exited).isTrue();assertThat(child.exitValue()).withFailMessage("Recovery fixture child failed: %s",Files.readString(directory.resolve("process.log"))).isZero();
             assertThat(Files.readString(directory.resolve("inference-marker"))).isEqualTo("once");
             assertThat(deliveries).hasValue(1);deliveryStatus.set(200);
             var restored=open(assistant);restored.pollOnce();restored.close();
