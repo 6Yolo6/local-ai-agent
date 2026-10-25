@@ -17,41 +17,47 @@ class GyingResearchServiceTest {
     ObjectNode plan(String json)throws Exception{return (ObjectNode)mapper.readTree(json);}
     ObjectNode found(ObjectNode p,String id){var f=mapper.createObjectNode().put("answer","原答案").put("total",1);f.set("queryPlan",p);var movies=f.putArray("movies");if(id!=null)movies.addObject().put("id",id).put("titleCn","样本").put("summary","宇航员寻找返回地球的航线。");return f;}
     ObjectNode run(){return service.run(mapper.createObjectNode().put("message","宇航员回家电影"),"job","lease",System.nanoTime()+60_000_000_000L);}
+    @Test void catalogRetrievalKeepsTheOriginalRequestDeadline()throws Exception{
+        var p=plan("{\"intent\":\"search\"}");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(found(p,"a"));
+        long deadline=System.nanoTime()+60_000_000_000L;
+        service.run(mapper.createObjectNode().put("message","科幻电影"),"job","lease",deadline);
+        verify(catalog).query(any(),eq(deadline));
+    }
     @Test void invalidPlanFailureRetainsDistinctModelCode()throws Exception{
         when(planner.plan(any(),anyLong())).thenThrow(new OllamaService.OllamaException("CONTEXT_TOO_LONG","fixture"));assertThat(run().path("error").path("code").asText()).isEqualTo("CONTEXT_TOO_LONG");verifyNoInteractions(catalog,web);
     }
     @Test void supportedCandidatesHaveActualQuoteAndCorrectCounts()throws Exception{
-        var p=plan("{\"intent\":\"search\",\"semanticText\":\"宇航员回家\"}");var f=found(p,"a");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(f);
+        var p=plan("{\"intent\":\"search\",\"semanticText\":\"宇航员回家\"}");var f=found(p,"a");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
         when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"selectedIds\":[\"a\",\"invented\"],\"quotes\":[{\"id\":\"a\",\"quote\":\"返回地球的航线\"}]}"));
         var r=run();assertThat(r.path("status").asText()).isEqualTo("completed");assertThat(f.path("returned").asInt()).isEqualTo(1);assertThat(f.path("movies").get(0).path("reasons").toString()).contains("返回地球的航线");verifyNoInteractions(web);
     }
     @Test void inventedQuoteCannotPassCandidateReviewAndRealWebFailureIsPreserved()throws Exception{
-        var p=plan("{\"intent\":\"search\",\"semanticText\":\"宇航员回家\"}");var f=found(p,"a");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(f);
+        var p=plan("{\"intent\":\"search\",\"semanticText\":\"宇航员回家\"}");var f=found(p,"a");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
         when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"selectedIds\":[\"a\"],\"quotes\":[{\"id\":\"a\",\"quote\":\"完全虚构的情节\"}]}"));when(web.search(anyString())).thenReturn(plan("{\"ok\":false,\"error\":{\"code\":\"WEB_TIMEOUT\"}}"));
         assertThat(run().path("error").path("code").asText()).isEqualTo("WEB_TIMEOUT");assertThat(f.path("movies").isEmpty()).isTrue();verify(web).search(anyString());
     }
     @Test void emptyCatalogSearchUsesActualSearchTool()throws Exception{
-        var p=plan("{\"intent\":\"search\"}");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(found(p,null));when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[]}}"));
+        var p=plan("{\"intent\":\"search\"}");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(found(p,null));when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[]}}"));
         var r=run();assertThat(r.path("status").asText()).isEqualTo("completed");assertThat(r.path("trace").toString()).contains("searchMovieWeb");
     }
     @Test void irrelevantWebResultsAreRemovedInsteadOfDisplayed()throws Exception{
-        var p=plan("{\"intent\":\"web\"}");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(found(p,null));var response=plan("{\"ok\":true,\"data\":{\"webResults\":[{\"title\":\"网红同名\",\"snippet\":\"无关资料\",\"url\":\"https://example.com\"}]}}");when(web.search(anyString())).thenReturn(response);when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\":[],\"identifiedTitle\":\"\"}"));
+        var p=plan("{\"intent\":\"web\"}");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(found(p,null));var response=plan("{\"ok\":true,\"data\":{\"webResults\":[{\"title\":\"网红同名\",\"snippet\":\"无关资料\",\"url\":\"https://example.com\"}]}}");when(web.search(anyString())).thenReturn(response);when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\":[],\"identifiedTitle\":\"\"}"));
         assertThat(run().path("answer").asText()).contains("没有足够相关");assertThat(response.path("data").path("webResults").isEmpty()).isTrue();
     }
     @Test void webLocatedTitleRetainsOriginalHardConditionsAndSupersedesOldResults()throws Exception{
-        var p=plan("{\"intent\":\"web\",\"yearFrom\":2020,\"excludedDirectors\":[\"甲\"]}");var first=found(p,null);var second=found(p,"b");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(first,second);
+        var p=plan("{\"intent\":\"web\",\"yearFrom\":2020,\"excludedDirectors\":[\"甲\"]}");var first=found(p,null);var second=found(p,"b");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(first,second);
         when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[{\"title\":\"样本电影\",\"snippet\":\"样本的剧情\"}]}}"));when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\":[0],\"identifiedTitle\":\"样本\",\"quotes\":[{\"index\":0,\"quote\":\"样本的剧情\"}]}"));
-        var r=run();var captor=org.mockito.ArgumentCaptor.forClass(ObjectNode.class);verify(catalog,times(2)).query(captor.capture());var actual=captor.getAllValues().get(1).path("plan");assertThat(actual.path("yearFrom").asInt()).isEqualTo(2020);assertThat(actual.path("excludedDirectors").get(0).asText()).isEqualTo("甲");assertThat(first.path("superseded").asBoolean()).isTrue();assertThat(r.path("answer").asText()).contains("保留原筛选条件");
+        var r=run();var captor=org.mockito.ArgumentCaptor.forClass(ObjectNode.class);verify(catalog,times(2)).query(captor.capture(),anyLong());var actual=captor.getAllValues().get(1).path("plan");assertThat(actual.path("yearFrom").asInt()).isEqualTo(2020);assertThat(actual.path("excludedDirectors").get(0).asText()).isEqualTo("甲");assertThat(first.path("superseded").asBoolean()).isTrue();assertThat(r.path("answer").asText()).contains("保留原筛选条件");
     }
     @Test void webConfirmationOfAnAlreadyLocatedTitlePreservesItsPlotAnswer()throws Exception{
-        var p=plan("{\"intent\":\"web\",\"titles\":[\"样本\"]}");var f=found(p,"a");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(f);
+        var p=plan("{\"intent\":\"web\",\"titles\":[\"样本\"]}");var f=found(p,"a");when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
         when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[{\"title\":\"样本电影\",\"snippet\":\"宇航员寻找返回地球的航线。\"}]}}"));
         when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\":[0],\"identifiedTitle\":\"样本\",\"quotes\":[{\"index\":0,\"quote\":\"返回地球的航线\"}]}"));
-        var r=run();assertThat(r.path("answer").asText()).contains("片库简介", "返回地球的航线");assertThat(r.path("queryPlan").path("intent").asText()).isEqualTo("web");assertThat(f.path("superseded").asBoolean()).isFalse();verify(catalog).query(any());
+        var r=run();assertThat(r.path("answer").asText()).contains("片库简介", "返回地球的航线");assertThat(r.path("queryPlan").path("intent").asText()).isEqualTo("web");assertThat(f.path("superseded").asBoolean()).isFalse();verify(catalog).query(any(),anyLong());
     }
     @Test void explicitSourceIdentityMismatchIsRemovedBeforeModelJudgement()throws Exception{
         var p=plan("{\"intent\": \"web\", \"titles\": [\"样本\"]}");var f=found(p,"a");((ObjectNode)f.path("movies").get(0)).put("category","mv").put("year",2001);
-        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(f);
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
         when(web.search(anyString())).thenReturn(plan("{\"ok\": true, \"data\": {\"webResults\": [{\"title\": \"样本 (2001)\", \"snippet\": \"返回地球的航线\"}, {\"title\": \"样本 (TV series)\", \"snippet\": \"同名电视剧的故事\"}, {\"title\": \"样本 (1999 film)\", \"snippet\": \"不同年份的重拍版本\"}]}}"));
         when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\": [0], \"identifiedTitle\": \"样本\", \"quotes\": [{\"index\": 0, \"quote\": \"返回地球的航线\"}]}"));
         var r=run();var data=r.path("trace").get(2).path("result").path("data");
@@ -60,11 +66,11 @@ class GyingResearchServiceTest {
 
     @Test void exactFilmIdentityLinkIsKeptWithoutClaimingTheSnippetVerifiesItsPlot()throws Exception{
         var p=plan("{\"intent\": \"web\", \"titles\": [\"样本\"]}");var f=found(p,"a");((ObjectNode)f.path("movies").get(0)).put("category","mv").put("year",2001).put("titleEn","Sample");
-        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any())).thenReturn(f);
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
         when(web.search(anyString())).thenReturn(plan("{\"ok\": true, \"data\": {\"webResults\": [{\"title\": \"Sample (2001) - IMDb\", \"url\": \"https://www.imdb.com/title/tt0000001/\", \"snippet\": \"Directed by a director. Cast: two actors.\"}]}}"));
         when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\": [], \"identifiedTitle\": \"\", \"quotes\": []}"));
         var r=run();var data=r.path("trace").get(2).path("result").path("data");
-        assertThat(r.path("answer").asText()).contains("片库简介","联网定位到同一影片条目","剧情来自片库","未验证剧情");assertThat(data.path("rawReturned").asInt()).isEqualTo(1);assertThat(data.path("returned").asInt()).isEqualTo(1);assertThat(data.path("evidenceScope").asText()).isEqualTo("film-identity");verify(catalog).query(any());
+        assertThat(r.path("answer").asText()).contains("片库简介","联网定位到同一影片条目","剧情来自片库","未验证剧情");assertThat(data.path("rawReturned").asInt()).isEqualTo(1);assertThat(data.path("returned").asInt()).isEqualTo(1);assertThat(data.path("evidenceScope").asText()).isEqualTo("film-identity");verify(catalog).query(any(),anyLong());
     }
 
 }

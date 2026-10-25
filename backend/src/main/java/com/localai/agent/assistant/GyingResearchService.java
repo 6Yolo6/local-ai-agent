@@ -21,12 +21,12 @@ public class GyingResearchService {
         try{
             long start=System.nanoTime();ObjectNode plan=planner.plan(request,deadline);trace.add(step(id,"planning",model.researchModelName(),"success",start));
             ObjectNode query=mapper.createObjectNode().put("jobId",Objects.toString(jobId,"")).put("lease",Objects.toString(lease,""));query.set("plan",plan);query.put("message",request.path("message").asText());
-            if(plan.path("inheritContext").asBoolean()){ObjectNode resolved=catalog.query(query);plan=(ObjectNode)resolved.path("queryPlan").deepCopy();query.set("plan",plan);}
+            if(plan.path("inheritContext").asBoolean()){ObjectNode resolved=catalog.query(query,deadline);plan=(ObjectNode)resolved.path("queryPlan").deepCopy();query.set("plan",plan);}
             if(plan.path("titles").isEmpty()&&(!plan.path("semanticText").asText().isBlank()||!plan.path("seedTitle").asText().isBlank())){
                 start=System.nanoTime();try{ArrayNode dense=semantic.candidates(plan,deadline);query.set("denseCandidates",dense);trace.add(step(id,"retrieval",dense.isEmpty()?"semantic-unavailable":"bge-m3","success",start).put("returned",dense.size()));}catch(IOException e){trace.add(step(id,"retrieval","embedding","error",start));}
             }
             if(!plan.path("semanticText").asText().isBlank()||plan.path("intent").asText().equals("similar"))query.put("candidateLimit",Math.min(20,Math.max(8,plan.path("limit").asInt(10))));
-            start=System.nanoTime();ObjectNode found=catalog.query(query);ObjectNode receipt=mapper.createObjectNode().put("ok",true);receipt.set("data",found);ObjectNode queryStep=step(id,"tool","queryCatalog","success",start);queryStep.set("arguments",plan);queryStep.set("result",receipt);trace.add(queryStep);
+            start=System.nanoTime();ObjectNode found=catalog.query(query,deadline);ObjectNode receipt=mapper.createObjectNode().put("ok",true);receipt.set("data",found);ObjectNode queryStep=step(id,"tool","queryCatalog","success",start);queryStep.set("arguments",plan);queryStep.set("result",receipt);trace.add(queryStep);
             JsonNode effective=found.path("queryPlan");result.set("queryPlan",effective.deepCopy());String answer=found.path("answer").asText();
             if(effective.path("titles").isEmpty()&&(!effective.path("semanticText").asText().isBlank()||effective.path("intent").asText().equals("similar"))&&found.path("movies").size()>0){
                 start=System.nanoTime();verifyCandidates(request,found,deadline);trace.add(step(id,"planning","candidate-relevance","success",start));
@@ -86,7 +86,7 @@ public class GyingResearchService {
                         if(!title.isBlank()&&title.length()<=100&&!(effective.path("titles").size()>0&&found.path("movies").size()==1)){
                             // A model suggestion becomes a candidate only after a new actual catalog query.
                             ObjectNode candidate=effective.deepCopy();candidate.put("intent","search").put("inheritContext",false).putArray("titles").add(title);candidate.put("limit",5);
-                            ObjectNode follow=query.deepCopy();follow.set("plan",candidate);follow.remove(List.of("denseCandidates","message","candidateLimit"));start=System.nanoTime();ObjectNode located=catalog.query(follow);
+                            ObjectNode follow=query.deepCopy();follow.set("plan",candidate);follow.remove(List.of("denseCandidates","message","candidateLimit"));start=System.nanoTime();ObjectNode located=catalog.query(follow,deadline);
                             ObjectNode t=step(id,"tool","queryCatalog","success",start);t.set("arguments",candidate);t.set("result",mapper.createObjectNode().put("ok",true).set("data",located));trace.add(t);
                             if(!located.path("movies").isEmpty()){found.put("superseded",true);found=located;result.set("queryPlan",located.path("queryPlan").deepCopy());answer="联网线索提示可能是《"+title+"》；已保留原筛选条件重新查询片库，实际候选列在下方。";}
                         }

@@ -2,11 +2,21 @@ param(
     [ValidateSet('all', 'ollama', 'backend', 'frontend', 'router')][string]$Service = 'all',
     [ValidateSet('ollama', 'backend', 'frontend', 'router')][string[]]$Services,
     [switch]$Build,
-    [switch]$PullModel
+    [switch]$PullModel,
+    [switch]$ServiceHost
 )
 . "$PSScriptRoot/local-common.ps1"
 Initialize-LocalDirectories
 $needed = if ($Services) { @('ollama', 'backend', 'router', 'frontend') | Where-Object { $_ -in $Services } } elseif ($Service -eq 'all') { @('ollama', 'backend', 'router', 'frontend') } else { @($Service) }
+. "$PSScriptRoot/service-host.ps1"
+if (-not $ServiceHost) {
+    $waitSeconds = if ($Build) { 1200 } else { 300 }
+    Invoke-IndependentLocalStartup -Services $needed -Build:$Build -PullModel:$PullModel -WaitSeconds $waitSeconds
+    return
+}
+if ([LocalAiIndependentProcess]::InJob()) {
+    throw 'Persistent services must be launched outside the calling Windows Job. No service was started.'
+}
 foreach ($item in $needed) {
     switch ($item) {
         'ollama' {
