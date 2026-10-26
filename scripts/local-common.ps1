@@ -64,8 +64,16 @@ function Get-ServiceRecord([string]$Name) {
     if (-not (Test-Path -LiteralPath $recordPath)) { return $null }
     $record = Read-LocalJson $recordPath
     $process = Get-Process -Id $record.processId -ErrorAction SilentlyContinue
-    if ($process -and $process.StartTime.ToUniversalTime().Ticks -eq ([datetime]$record.startedAt).ToUniversalTime().Ticks -and
-        $process.Path -eq $record.executable) { return $record }
+    if (-not $process) { return $null }
+    # The process can exit between Get-Process and its property reads.
+    # Missing identity proof still requires the caller's receipt/port checks.
+    try {
+        $startedAt = $process.StartTime
+        $executable = $process.Path
+    } catch { return $null }
+    if ($startedAt -and $executable -and
+        $startedAt.ToUniversalTime().Ticks -eq ([datetime]$record.startedAt).ToUniversalTime().Ticks -and
+        $executable -eq $record.executable) { return $record }
     return $null
 }
 function Start-LocalProcess([string]$Name, [string]$Executable, [string[]]$Arguments, [string]$Directory) {
