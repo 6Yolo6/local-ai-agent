@@ -4,15 +4,10 @@ const { pathToFileURL } = require('node:url');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { startLifecycle, writeJson } = require('./lifecycle.cjs');
+const { createOllamaClient } = require('./ollama-client.cjs');
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(__dirname, '..');
 const powershell = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-
-async function ollamaApi(endpoint, options = {}) {
-  const response = await fetch('http://127.0.0.1:11434' + endpoint, { ...options, signal: AbortSignal.timeout(175000) });
-  if (!response.ok) throw new Error('Ollama returned HTTP ' + response.status);
-  return response.json();
-}
 
 async function main() {
   const service = process.argv[2];
@@ -35,6 +30,7 @@ async function main() {
     await vite.listen();
     close = () => vite.close();
   } else if (service === 'ollama') {
+    const ollamaApi = createOllamaClient();
     const executable = process.env.LOCAL_AI_OLLAMA_EXECUTABLE;
     if (!executable) throw new Error('LOCAL_AI_OLLAMA_EXECUTABLE is required');
     const launched = await execFileAsync(powershell, [

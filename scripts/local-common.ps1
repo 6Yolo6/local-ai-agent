@@ -32,8 +32,11 @@ if (Test-Path -LiteralPath $bridgeStateKey) {
     $env:LOCAL_AI_GYING_STATE_KEY_FILE = $bridgeStateKey
 }
 $env:LOCAL_AI_OLLAMA_EXECUTABLE = $OllamaExe
-$env:OLLAMA_HOST = '127.0.0.1:11434'
-$env:LOCAL_AI_OLLAMA_URL = 'http://127.0.0.1:11434'
+. (Join-Path $PSScriptRoot 'ollama-config.ps1')
+$OllamaPort = Get-LocalOllamaPort $LocalConfig
+$OllamaUrl = "http://127.0.0.1:$OllamaPort"
+$env:OLLAMA_HOST = "127.0.0.1:$OllamaPort"
+$env:LOCAL_AI_OLLAMA_URL = $OllamaUrl
 $env:OLLAMA_MODELS = $LocalConfig.modelsDir
 $env:OLLAMA_CONTEXT_LENGTH = '4096'
 $env:OLLAMA_NUM_PARALLEL = '1'
@@ -76,12 +79,30 @@ function Get-ServiceRecord([string]$Name) {
         $executable -eq $record.executable) { return $record }
     return $null
 }
+function New-LocalControlDirectory([string]$Path) {
+    if (Test-Path -LiteralPath $Path) { throw 'A new lifecycle directory is required.' }
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent().User
+    $security = New-Object Security.AccessControl.DirectorySecurity
+    $security.SetAccessRuleProtection($true, $false)
+    $security.SetOwner($identity)
+    foreach ($sid in @($identity.Value, 'S-1-5-18', 'S-1-5-32-544')) {
+        $principal = New-Object Security.Principal.SecurityIdentifier($sid)
+        $rule = New-Object Security.AccessControl.FileSystemAccessRule($principal, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+        $security.AddAccessRule($rule)
+    }
+    $directory = New-Object IO.DirectoryInfo($Path)
+    if ($PSVersionTable.PSEdition -eq 'Core') {
+        [IO.FileSystemAclExtensions]::Create($directory, $security)
+    } else {
+        $directory.Create($security)
+    }
+}
 function Start-LocalProcess([string]$Name, [string]$Executable, [string[]]$Arguments, [string]$Directory) {
     if (Get-ServiceRecord $Name) { Write-Host "$Name already running."; return }
     if (-not (Test-Path -LiteralPath $Executable)) { throw "Executable missing: $Executable" }
     $instanceId = [guid]::NewGuid().ToString()
     $controlDirectory = Join-Path (Join-Path $LocalDir 'lifecycle') $instanceId
-    New-Item -ItemType Directory -Path $controlDirectory -Force | Out-Null
+    New-LocalControlDirectory $controlDirectory
     $stdout = Join-Path $ProjectRoot "logs/$Name.out.log"
     $stderr = Join-Path $ProjectRoot "logs/$Name.err.log"
     $previousInstance = $env:LOCAL_AI_INSTANCE_ID
@@ -117,7 +138,7 @@ function Wait-LocalHttp([string]$Name, [string]$Url, [int]$Seconds = 60) {
 }
 
 function Get-ServicePort([string]$Name) {
-    switch ($Name) { 'ollama' { 11434 }; 'backend' { 5000 }; 'router' { 5002 }; 'frontend' { 3000 }; default { throw "Unknown service: $Name" } }
+    switch ($Name) { 'ollama' { $OllamaPort }; 'backend' { 5000 }; 'router' { 5002 }; 'frontend' { 3000 }; default { throw "Unknown service: $Name" } }
 }
 function Write-LocalJson([string]$Path, $Value) {
     $temporary = "$Path.tmp"

@@ -103,3 +103,13 @@ GYING结构化查询增加独立影视模型、公开元数据向量索引、原
 片库冷读取原10秒超时改为read/call30秒，仍受总体deadline约束；真实条件/语义/Bing及生产只读队列已完成，9入口符合预期。小模型仍有额外人物排除/年份边界偏差，不能把completed等同全正确。网站登录条件查询未复验；未转存、发帖或发消息。回退三份age认证材料在`G:/gying-backups/ai-agent-20261025T091941.886931Z`，只恢复应用并保留当前加密state/key。Movie安全58 PASS/11 FAIL/1 UNKNOWN为前序复检，本补丁未关闭原风险。
 
 今晚2026-10-25 20:00 +08单次优雅重启仍Ready；只读绑定及readiness通过，未立即执行或重复登记，重启后仍需ASUS登录恢复。详见[结构化检索](gying-query-plan-v2.md)及Movie仓库`docs/ai-assistant-availability-20261025.md`。
+
+## 2026-10-28 重启后端口恢复
+
+10月27日20:03真实重启后，Windows TCP排除范围11402–11501覆盖11434，Ollama实际bind失败10013；原登录恢复未完成。10月28日18:20–18:21正常退出子进程已结束的精确旧Node宿主，将私有 `.local/environment.json` 的 `ollamaPort` 设为21434。启动、后端 `LOCAL_AI_OLLAMA_URL`、健康、模型卸载、实例端口检查和正常停止共用此端口；Ollama、Agent5000、Router5002、Vue3000全部只监听127.0.0.1。
+
+Ollama保留独立隐藏控制台，新增子日志仅继承指定三个句柄；新生命周期目录与child日志ACL仅当前用户/SYSTEM/Administrators。业务JAR仍为10月25日SHA `33d9b6748cdac41f82e7d7ac9afbcda4f672d2bf71fce640c235f8e3efdf3c37`，模型与索引未替换。Movie维护runtime同步读取同一私有端口配置，原journal=recovered、0 pending、Worker已由原guard还原。
+
+配置14项、身份/退出7项、Node4项、Windows Job6项、新目录/日志ACL3项及原console fixture12项通过。真实1.7B读取package/Router返回正确名称与dev命令；4B片库查询成功。简短历史追问未正确利用上下文，网站登录用户链路未复验。九入口健康不等于所有AI质量场景通过。
+
+原配置/脚本、现役runtime备份和验证在 `G:/gying-tools/restart-20261018/recovery-20261028/port-21434-recovery/`。回退先按实例正常排空/停止AI，再确认11434可绑定；当前仍被保留时保持21434。独立索引构建命令需要显式传 `--ollama http://127.0.0.1:21434`；未运行索引重建或下载模型。

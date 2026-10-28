@@ -45,18 +45,18 @@ foreach ($name in $names) {
                 throw "Cannot defer Ollama while $application is running."
             }
         }
-        $connections = @(Get-NetTCPConnection -LocalPort 11434 -State Established -ErrorAction SilentlyContinue)
+        $connections = @(Get-NetTCPConnection -LocalPort $OllamaPort -State Established -ErrorAction SilentlyContinue)
         if ($connections.Count -gt 0) { throw 'Ollama still has connected clients; no idle-state proof is available. Reboot must be cancelled.' }
-        $loaded = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/ps' -TimeoutSec 10 -DisableKeepAlive
+        $loaded = Invoke-RestMethod -Uri "$OllamaUrl/api/ps" -TimeoutSec 10 -DisableKeepAlive
         foreach ($model in $loaded.models) {
             $body = @{ model=$model.name; keep_alive=0; stream=$false } | ConvertTo-Json
-            $unloaded = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/generate' -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 180 -DisableKeepAlive
+            $unloaded = Invoke-RestMethod -Uri "$OllamaUrl/api/generate" -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 180 -DisableKeepAlive
             if (-not $unloaded.done) { throw 'Ollama did not acknowledge model unload. Reboot must be cancelled.' }
         }
-        $remaining = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/ps' -TimeoutSec 10 -DisableKeepAlive
+        $remaining = Invoke-RestMethod -Uri "$OllamaUrl/api/ps" -TimeoutSec 10 -DisableKeepAlive
         if (@($remaining.models).Count -gt 0) { throw 'Ollama models remain loaded. Reboot must be cancelled.' }
         Start-Sleep -Milliseconds 300
-        if (@(Get-NetTCPConnection -LocalPort 11434 -State Established -ErrorAction SilentlyContinue).Count -gt 0) { throw 'Ollama gained a connected client after unload. Reboot must be cancelled.' }
+        if (@(Get-NetTCPConnection -LocalPort $OllamaPort -State Established -ErrorAction SilentlyContinue).Count -gt 0) { throw 'Ollama gained a connected client after unload. Reboot must be cancelled.' }
         $proof = @{
             instanceId=$record.instanceId; processId=$record.processId; startedAt=$record.startedAt;
             status='deferredToWindowsShutdown'; processStillRunning=$true; models=@(); checkedAt=[datetime]::UtcNow.ToString('o')

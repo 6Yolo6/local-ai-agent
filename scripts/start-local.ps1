@@ -20,13 +20,13 @@ if ([LocalAiIndependentProcess]::InJob()) {
 foreach ($item in $needed) {
     switch ($item) {
         'ollama' {
-            if (-not (Test-LocalHttp 'http://127.0.0.1:11434/api/version')) {
-                Assert-FreePort 11434
+            if (-not (Test-LocalHttp "$OllamaUrl/api/version")) {
+                Assert-FreePort $OllamaPort
                 Start-LocalProcess 'ollama' $NodeExe @(('"' + (Join-Path $PSScriptRoot 'service-launcher.cjs') + '"'), 'ollama') $ProjectRoot
-                Wait-LocalHttp 'ollama' 'http://127.0.0.1:11434/api/version'
+                Wait-LocalHttp 'ollama' "$OllamaUrl/api/version"
                 Wait-LifecycleReady 'ollama'
             }
-            $tags = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 5
+            $tags = Invoke-RestMethod -Uri "$OllamaUrl/api/tags" -TimeoutSec 5
             if ($LocalConfig.model -notin @($tags.models.name)) {
                 if (-not $PullModel) { throw "Model $($LocalConfig.model) is missing. Run start-local.ps1 -Service ollama -PullModel." }
                 & $OllamaExe pull $LocalConfig.model
