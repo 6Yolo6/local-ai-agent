@@ -15,7 +15,7 @@ final class ExplicitQueryChoices {
         "(?:不要|不用|不看|不是|排除|别放|别要|不含|不包括|除去|不喜欢|不能|不得|别|禁止|不使用|不采用|非)"
         +"(?:再|只|仅|用|拿|按|以|看|查|找|采用|使用|选|选用|当作|当成|任何|所有)*$");
     private static final Pattern NOT_EXCLUSIVE_BEFORE=Pattern.compile(
-        "(?:(?:不要|不能|不得|别|不应|不该)(?:只|仅|光)(?:看|查|找|用|按|以|采用|使用)*|不只是|不仅是|不光是|不止是|不止|不只|不仅|不光)$");
+        "(?:(?:不要|不能|不得|别|不应|不该|不是)(?:只|仅|光)(?:看|查|找|用|按|以|采用|使用)*|不只是|不仅是|不光是|不止是|不止|不只|不仅|不光)$");
     private static final Pattern POSITIVE_BEFORE=Pattern.compile(
         "(?:只要|只查|只看|改用|改成|换用|换成|要|查|找|看|用|按|以|采用|使用|选用|保留|包括|仍用|还是)$");
     private static final Pattern NEGATIVE_AFTER=Pattern.compile(

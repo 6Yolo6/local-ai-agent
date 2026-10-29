@@ -28,3 +28,11 @@ python -X utf8 scripts/build-semantic-index.py --catalog <公开快照路径> --
 当前代码`cd79797`、JAR SHA`33d9b6748cdac41f82e7d7ac9afbcda4f672d2bf71fce640c235f8e3efdf3c37`，91项verify与完整JAR15000隔离健康/实例握手/优雅退出通过。冷片库实际15.05秒超过旧10秒read，改为read/call30秒、connect2秒，所有研究片库请求继续受原总体deadline约束。Windows启动默认通过独立WMI隐藏壳，内部ServiceHost处于Job则拒绝；6项真实合成Job与9项研究配置测试通过。
 
 17:19–17:20仅平滑替换Agent backend；首次公网403验收失败已回退，第二次经浏览器标识入口复验部署成功。三份age认证回退在`G:/gying-backups/ai-agent-20261025T091941.886931Z`，保留旧JAR、私有state/key/token/config与旧启动入口。其他本机实例、Movie容器、配置与生效索引hash保持。实际条件27.98秒、语义62.50秒、Bing17.42秒、生产只读队列7.52秒完成；人物额外排除与年份包含边界偏差仍记录，completed不代表全正确。网站登录条件查询未复验，未真实外发；完整证据见Movie仓库`docs/ai-assistant-availability-20261025.md`与`E:/gying-tools/releases/ai-assistant-unavailable-20261025/`。
+
+## 2026-10-29 类别与评分来源候选（用户暂缓上线）
+
+新增ExplicitQueryChoices校正显式类别/评分来源：否定剧集不覆盖肯定电影，否定IMDb不覆盖豆瓣；书名号内容不作类别条件，枚举否定与“不是只用”等独占否定有回归；多选/冲突无法表达时澄清。未修数量、严格时长、跨轮年份范围替换与更早列表指代。
+
+104项Maven verify全部通过，最终JAR SHA-256 `01eab8e20a5ecbbbc8677d1000fecb7e87479402f3e839c3b9444ff39336782b`。15000隔离健康、实例握手和正常退出通过。候选/回归/旧包在 `E:/gying-tools/releases/ai-quality-20261029/`，原运行JAR仍是10月25日33d9b674…；用户明确暂缓上线，未替换或重启现役服务。
+
+Movie仓库新增开发网站runner和84条历史回答的模型辅助复核，真人评分分开。旧服务上的两条新专项查询因片库研究接口500没有有效queryPlan；Movie后端日志确认Java heap OOM，不能把这组失败算作条件解析评分。运行恢复和新15轮网站USER采集仍待安排，不用测试数量宣称模型质量提升。

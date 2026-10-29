@@ -124,4 +124,20 @@ class MovieQueryPlannerTest {
   assertThat(p.path("category").asText()).isEqualTo("tv");assertThat(p.path("intent").asText()).isEqualTo("search");
  }
 
+
+ @Test void notOnlyCopulaDoesNotTurnIncludedCategoriesOrSourcesIntoExclusions()throws Exception{
+  for(String text:new String[]{"不是只看电影，也要剧集","不是只看剧集，也要电影","不是只看电影"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"category\":\"tv\"}");
+   assertThat(p.path("intent").asText()).as(text).isEqualTo("clarify");assertThat(p.has("category")).isFalse();
+   assertThat(p.path("clarification").asText()).isNotBlank();
+  }
+  for(String text:new String[]{"不是只用豆瓣，也要IMDb","不是只按IMDb，还要豆瓣","不是只用豆瓣"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"ratingSource\":\"imdb\"}");
+   assertThat(p.path("intent").asText()).as(text).isEqualTo("clarify");assertThat(p.has("ratingSource")).isFalse();
+   assertThat(p.path("clarification").asText()).isNotBlank();
+  }
+  assertThat(extract("不是电影，只要剧集","{\"intent\":\"search\",\"category\":\"mv\"}").path("category").asText()).isEqualTo("tv");
+  assertThat(extract("不是豆瓣，只用IMDb","{\"intent\":\"search\",\"ratingSource\":\"douban\"}").path("ratingSource").asText()).isEqualTo("imdb");
+ }
+
 }
