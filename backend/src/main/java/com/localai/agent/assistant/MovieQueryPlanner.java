@@ -108,7 +108,6 @@ public class MovieQueryPlanner {
         explicitNumbers(message,result);
         var wanted=java.util.regex.Pattern.compile("(?:列|给我|要|展示|推荐|先给我)\\s*([0-9零一二两三四五六七八九十]+)\\s*部").matcher(message);
         if(wanted.find())result.put("limit",Math.min(20,count(wanted.group(1))));else if(followup)result.remove("limit");else result.put("limit",10);
-        if(message.matches("(?s).*(?:电影|影片|片子).*"))result.put("category","mv");if(message.contains("电视剧")||message.contains("剧集"))result.put("category","tv");if(message.contains("动漫"))result.put("category","ac");
         if(message.contains("从旧到新")||message.contains("从早到晚"))result.put("sort","year_asc");if(message.contains("从新到旧"))result.put("sort","year_desc");
         if(!result.path("intent").asText().equals("web")&&!result.path("intent").asText().equals("details")){
             var topic=java.util.regex.Pattern.compile("(?:讲|关于|涉及)([^，。；,;]{3,160})").matcher(message);
@@ -134,6 +133,7 @@ public class MovieQueryPlanner {
         }
         semanticText=semanticText.replaceAll("^(?:类似|相似)\\s*(?:的)?\\s*","").replaceAll("^[\\s的]+","").replaceAll("(?:的)?(?:电影|影片|作品|电视剧|剧集|动漫|题材)+$","").trim();
         if(result.has("semanticText"))result.put("semanticText",semanticText);
+        ExplicitQueryChoices.ground(message,result);
         return result;
     }
     /** Units and direction bind a number to a field; a coincidentally equal count is no evidence. */
@@ -145,7 +145,6 @@ public class MovieQueryPlanner {
         if(since.find())result.put(Set.of("以前","之前").contains(since.group(2))?"yearTo":"yearFrom",Integer.parseInt(since.group(1)));
         var recent=java.util.regex.Pattern.compile("(?:近|最近)([0-9一二两三四五六七八九十]+)年").matcher(message);
         if(recent.find()){int year=LocalDate.now(ZoneId.of("Asia/Shanghai")).getYear();result.put("yearFrom",year-count(recent.group(1))+1).put("yearTo",year);}
-        for(String source:List.of("douban","imdb","tmdb"))if(message.toLowerCase(Locale.ROOT).contains(source)||source.equals("douban")&&message.contains("豆瓣"))result.put("ratingSource",source);
         String numeric="([0-9]+(?:\\.[0-9]+)?)";
         var scores=java.util.regex.Pattern.compile("(?:豆瓣|IMDB|IMDb|imdb|TMDB|评分|分数)[^，。；,;]{0,5}?"+numeric+"\\s*(?:到|至|[-–])\\s*"+numeric+"\\s*分?").matcher(message);
         if(scores.find())result.put("minRating",Double.parseDouble(scores.group(1))).put("maxRating",Double.parseDouble(scores.group(2)));

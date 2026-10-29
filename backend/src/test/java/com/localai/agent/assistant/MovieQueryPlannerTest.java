@@ -36,4 +36,92 @@ class MovieQueryPlannerTest {
   assertThat(extract("找讲相互信任的电影","{\"intent\": \"search\", \"semanticText\": \"相互信任的电影\"}").path("semanticText").asText()).isEqualTo("相互信任");
  }
 
+
+ @Test void excludedCategoryNeverOverridesTheAffirmativeCategoryInEitherOrder()throws Exception{
+  for(String text:new String[]{"找剧情电影，不要剧集","剧集不要，找剧情电影","不要剧集，只要电影","只要电影而不是电视剧"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"category\":\"tv\"}");
+   assertThat(p.path("category").asText()).as(text).isEqualTo("mv");assertThat(p.path("intent").asText()).isEqualTo("search");
+  }
+  for(String text:new String[]{"不要电影，只查电视剧","找剧集，电影不要"})
+   assertThat(extract(text,"{\"intent\":\"search\",\"category\":\"mv\"}").path("category").asText()).as(text).isEqualTo("tv");
+ }
+ @Test void categoryEnumerationRetainsNegationWithoutLeakingAcrossPositiveChoices()throws Exception{
+  for(String text:new String[]{"不要电影和剧集，只看动漫","电影和剧集都不要，只看动漫","不要电影或电视剧，要动漫"})
+   assertThat(extract(text,"{\"intent\":\"search\",\"category\":\"mv\"}").path("category").asText()).as(text).isEqualTo("ac");
+
+ }
+ @Test void ambiguousOrUnrepresentableCategoryRequestsClarifyInsteadOfGuessing()throws Exception{
+  for(String text:new String[]{"找电影和剧集","不要剧集","要电影，但电影又不要"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"category\":\"tv\"}");
+   assertThat(p.path("intent").asText()).as(text).isEqualTo("clarify");assertThat(p.has("category")).isFalse();assertThat(p.path("clarification").asText()).isNotBlank();
+  }
+ }
+ @Test void quotedTitlesSupplyNeitherCategoryNorRatingSource()throws Exception{
+  var p=extract("查《电视剧》这部电影，按IMDb评分排序","{\"intent\":\"search\",\"category\":\"tv\",\"ratingSource\":\"douban\"}");
+  assertThat(p.path("category").asText()).isEqualTo("mv");assertThat(p.path("ratingSource").asText()).isEqualTo("imdb");assertThat(p.path("titles").get(0).asText()).isEqualTo("电视剧");
+  p=extract("查《电影 IMDb 豆瓣》的剧情","{\"intent\":\"search\",\"category\":\"mv\",\"ratingSource\":\"imdb\"}");
+  assertThat(p.has("category")).isFalse();assertThat(p.has("ratingSource")).isFalse();assertThat(p.path("intent").asText()).isEqualTo("search");
+  assertThat(extract("查《电影》的剧集","{\"intent\":\"search\",\"category\":\"mv\"}").path("category").asText()).isEqualTo("tv");
+ }
+ @Test void excludedRatingSourceCannotReplaceTheRequestedSourceInEitherOrder()throws Exception{
+  for(String text:new String[]{"找电影，按豆瓣评分排序，不能拿IMDb分补","IMDb分不用，按豆瓣评分排","按豆瓣评分，不要IMDb","不用IMDb而是用豆瓣","没有豆瓣分的放最后，不能用IMDb补"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"ratingSource\":\"imdb\"}");
+   assertThat(p.path("ratingSource").asText()).as(text).isEqualTo("douban");assertThat(p.path("intent").asText()).isEqualTo("search");
+  }
+  assertThat(extract("别用豆瓣，按IMDb评分排","{\"intent\":\"search\",\"ratingSource\":\"douban\"}").path("ratingSource").asText()).isEqualTo("imdb");
+ }
+ @Test void multipleAffirmativeOrContradictorySourcesClarifyWithoutMixingScores()throws Exception{
+  for(String text:new String[]{"按豆瓣和IMDb评分排序","按IMDb和豆瓣评分排序","按豆瓣评分，但豆瓣又不要","不要IMDb评分"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"ratingSource\":\"imdb\"}");
+   assertThat(p.path("intent").asText()).as(text).isEqualTo("clarify");assertThat(p.has("ratingSource")).isFalse();assertThat(p.path("clarification").asText()).contains("评分");
+  }
+ }
+ @Test void supportedSourceAliasesAndExistingNumericExamplesRemainCompatible()throws Exception{
+  for(String text:new String[]{"找喜剧或冒险电影，2020年以后，IMDB至少7.5分，最多90分钟，列6部","查IMDb评分至少7.5分的电影"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"ratingSource\":\"douban\"}");
+   assertThat(p.path("ratingSource").asText()).isEqualTo("imdb");assertThat(p.path("minRating").asDouble()).isEqualTo(7.5);assertThat(p.path("category").asText()).isEqualTo("mv");
+  }
+  assertThat(extract("按TmDb评分排","{\"intent\":\"search\"}").path("ratingSource").asText()).isEqualTo("tmdb");
+  assertThat(extract("按Douban评分排","{\"intent\":\"search\"}").path("ratingSource").asText()).isEqualTo("douban");
+  assertThat(extract("找评分至少7分的电影","{\"intent\":\"search\",\"ratingSource\":\"imdb\"}").has("ratingSource")).isFalse();
+ }
+ @Test void explicitSourceChangeInKnownFollowupKeepsExistingInheritanceContract()throws Exception{
+  var r=m.createObjectNode().put("message","刚才的结果改用IMDb评分，别用豆瓣");r.putObject("context").putObject("queryPlan").put("ratingSource","douban");
+  var p=planner.grounded(r,(ObjectNode)m.readTree("{\"intent\":\"search\",\"ratingSource\":\"douban\"}"));
+  assertThat(p.path("inheritContext").asBoolean()).isTrue();assertThat(p.path("scope").asText()).isEqualTo("previousResults");assertThat(p.path("ratingSource").asText()).isEqualTo("imdb");
+ }
+
+
+ @Test void negatingExclusiveChoiceDoesNotExcludeTheMentionedOption()throws Exception{
+  for(String text:new String[]{"不要只看电影，也要剧集","不能只看剧集，也要电影","不只是电影","不要只看电影"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"category\":\"tv\"}");
+   assertThat(p.path("intent").asText()).as(text).isEqualTo("clarify");assertThat(p.has("category")).isFalse();
+  }
+  for(String text:new String[]{"不能只用豆瓣，也要IMDb","不要只按IMDb，还要豆瓣","不只是豆瓣","不能只用豆瓣"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"ratingSource\":\"imdb\"}");
+   assertThat(p.path("intent").asText()).as(text).isEqualTo("clarify");assertThat(p.has("ratingSource")).isFalse();
+  }
+ }
+ @Test void ratingNounsDoNotBreakGroupedSourceExclusions()throws Exception{
+  for(String text:new String[]{"IMDb评分和豆瓣评分都不用，用TMDB评分","豆瓣分与IMDb分均不采用，按TMDB排","不用IMDb评分和豆瓣评分，采用TmDb分"}) {
+   var p=extract(text,"{\"intent\":\"search\",\"ratingSource\":\"imdb\"}");
+   assertThat(p.path("ratingSource").asText()).as(text).isEqualTo("tmdb");assertThat(p.path("intent").asText()).isEqualTo("search");
+  }
+ }
+ @Test void ambiguousAnimeMovieWordingNeverSilentlyBroadensToOrdinaryMovies()throws Exception{
+  var p=extract("找动漫电影，不要剧集","{\"intent\":\"search\",\"category\":\"ac\",\"genresAll\":[\"动画\"]}");
+  assertThat(p.path("intent").asText()).isEqualTo("clarify");assertThat(p.has("category")).isFalse();
+  // The ungrounded alias is not preserved as a claim that the full plan was verified.
+  assertThat(p.path("genresAll").isEmpty()).isTrue();
+  p=extract("找动画电影，不要剧集","{\"intent\":\"search\",\"category\":\"tv\"}");
+  assertThat(p.path("intent").asText()).isEqualTo("search");assertThat(p.path("category").asText()).isEqualTo("mv");
+  assertThat(p.path("genresAll").get(0).asText()).isEqualTo("动画");
+ }
+
+
+ @Test void categoryGuardDoesNotEraseExistingModelClassificationOutsideItsVocabulary()throws Exception{
+  var p=extract("想看几部美剧","{\"intent\":\"search\",\"category\":\"tv\"}");
+  assertThat(p.path("category").asText()).isEqualTo("tv");assertThat(p.path("intent").asText()).isEqualTo("search");
+ }
+
 }
