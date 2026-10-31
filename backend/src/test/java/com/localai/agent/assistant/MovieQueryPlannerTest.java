@@ -140,4 +140,59 @@ class MovieQueryPlannerTest {
   assertThat(extract("不是豆瓣，只用IMDb","{\"intent\":\"search\",\"ratingSource\":\"douban\"}").path("ratingSource").asText()).isEqualTo("imdb");
  }
 
+
+ @Test void explicitVersionEnumerationOverridesRestatementClarificationWithoutInventingAVersion()throws Exception{
+  for(String text:new String[]{"片库里的《远岸》是不是有多个电影版本？请用年份和导演区分","列出《旧城》的不同版本，写出各自年份和导演"}){
+   var p=extract(text,"{\"intent\":\"clarify\",\"clarification\":\"请确认是否查不同版本\",\"semanticText\":\"版本\",\"movieId\":\"invented\"}");
+   assertThat(p.path("intent").asText()).as(text).isEqualTo("search");assertThat(p.has("clarification")).isFalse();assertThat(p.has("movieId")).isFalse();assertThat(p.has("semanticText")).isFalse();
+   assertThat(p.path("titles").size()).isEqualTo(1);assertThat(p.has("yearFrom")).isFalse();
+  }
+  var p=extract("远岸是不是有多个电影版本？","{\"intent\":\"clarify\",\"titles\":[\"远岸\"]}");
+  assertThat(p.path("intent").asText()).isEqualTo("search");
+  p=extract("联网查《旧城》的不同版本，列出年份","{\"intent\":\"clarify\"}");
+  assertThat(p.path("intent").asText()).isEqualTo("web");
+ }
+ @Test void exactVersionMetadataFollowupRetainsKnownSubjectAndLiteralYear()throws Exception{
+  var r=m.createObjectNode().put("message","只查2019年那个版本的主演，请按片库资料回答");r.putObject("context").putObject("queryPlan").putArray("titles").add("旧城");
+  var p=planner.grounded(r,(ObjectNode)m.readTree("{\"intent\":\"clarify\",\"clarification\":\"请确认年份\"}"));
+  assertThat(p.path("intent").asText()).isEqualTo("details");assertThat(p.path("inheritContext").asBoolean()).isTrue();assertThat(p.has("clarification")).isFalse();
+  assertThat(p.path("yearFrom").asInt()).isEqualTo(2019);assertThat(p.path("yearTo").asInt()).isEqualTo(2019);assertThat(p.has("movieId")).isFalse();
+  p=extract("《雨港》的导演是谁，主演有哪些？","{\"intent\":\"clarify\",\"clarification\":\"请确认要查导演还是主演\"}");
+  assertThat(p.path("intent").asText()).isEqualTo("details");assertThat(p.has("clarification")).isFalse();
+  p=extract("查《雨港》的主演，只要最多80分钟且至少120分钟的版本","{\"intent\":\"search\"}");
+  assertThat(p.path("intent").asText()).isEqualTo("clarify");assertThat(p.path("clarification").asText()).contains("最低要求超过最高限制");
+ }
+ @Test void explicitAnnouncementRequestAllowsReadOnlyWebAndDoesNotFilterMovieProductionRegion()throws Exception{
+  for(String text:new String[]{"截至今天，《远岸》有没有官方重映公告？给出来源和发布日期","请查《旧城》是否在中国大陆官方宣布重映，注明来源日期"}){
+   var p=extract(text,"{\"intent\":\"clarify\",\"clarification\":\"请确认允许联网\",\"regionsAny\":[\"中国大陆\"],\"semanticText\":\"重映\"}");
+   assertThat(p.path("intent").asText()).as(text).isEqualTo("web");assertThat(p.has("clarification")).isFalse();assertThat(p.has("regionsAny")).isFalse();assertThat(p.has("semanticText")).isFalse();
+   assertThat(p.path("unsupportedConditions").toString()).contains("实际官方来源核验");
+  }
+  assertThat(extract("不用查公告，只列出《旧城》的不同版本和年份","{\"intent\":\"search\"}").path("intent").asText()).isEqualTo("search");
+  assertThat(extract("查《官方重映公告发布日期》的导演是谁","{\"intent\":\"search\"}").path("intent").asText()).isEqualTo("details");
+ }
+ @Test void documentaryAliasesRetainMovieCategoryAndDoNotBecomeTitleInstructions()throws Exception{
+  for(String noun:new String[]{"纪录电影","纪录影片","纪录片"}){
+   var p=extract("找一部"+noun,"{\"intent\":\"search\",\"genresAll\":[\"纪录片\"]}");
+   assertThat(p.path("genresAll")).containsExactly(m.getNodeFactory().textNode("纪录片"));
+  }
+  assertThat(extract("查《纪录电影》的导演是谁","{\"intent\":\"search\",\"genresAll\":[\"纪录片\"]}").path("genresAll").isEmpty()).isTrue();
+ }
+ @Test void languageOrKeepsBothOriginalTermsWithoutInventingCountryAndMarksUnverifiedVoice()throws Exception{
+  var p=extract("找中文或西班牙语电影，必须是原始对白，不是发行配音","{\"intent\":\"search\",\"regionsAny\":[\"西班牙\"],\"languagesAny\":[\"西班牙语\"]}");
+  assertThat(p.path("languagesAny")).containsExactly(m.getNodeFactory().textNode("中文"),m.getNodeFactory().textNode("西班牙语"));assertThat(p.path("regionsAny").isEmpty()).isTrue();
+  assertThat(p.path("unsupportedConditions").toString()).contains("未区分原始对白与发行配音");
+  p=extract("找西班牙电影，语言为中文或西班牙语","{\"intent\":\"search\"}");
+  assertThat(p.path("regionsAny")).containsExactly(m.getNodeFactory().textNode("西班牙"));
+  assertThat(extract("查《西班牙语》的年份","{\"intent\":\"search\",\"regionsAny\":[\"西班牙\"],\"languagesAny\":[\"西班牙语\"]}").path("languagesAny").isEmpty()).isTrue();
+ }
+ @Test void sceneExclusionsRemainUnknownEvenWhenOrdinaryGenreIsSupported()throws Exception{
+  for(String condition:new String[]{"必须没有动物受伤镜头","不含儿童死亡画面","排除自残场景","避开虐待情节"}){
+   var p=extract("找纪录电影，"+condition+"；没有逐场指南就不要保证","{\"intent\":\"search\"}");
+   assertThat(p.path("genresAll")).containsExactly(m.getNodeFactory().textNode("纪录片"));assertThat(p.path("unsupportedConditions").toString()).as(condition).contains("普通简介不能逐场核验");
+  }
+  assertThat(extract("找关于受伤动物的纪录电影，不要恐怖电影","{\"intent\":\"search\"}").path("unsupportedConditions").isEmpty()).isTrue();
+  assertThat(extract("查《不要动物受伤镜头》的资料","{\"intent\":\"search\"}").path("unsupportedConditions").isEmpty()).isTrue();
+ }
+
 }
