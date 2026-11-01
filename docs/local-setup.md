@@ -1,8 +1,16 @@
 # 本机环境与验收记录
 
-验证日期：2026-10-18（Asia/Shanghai）。项目目录：D:/ai/local-ai-agent。环境安装基线为 2026-10-16，以下追加本次接入与生命周期验收。
+本文保留2026-10-16环境安装与2026-10-18初始验收基线，历史验证均按原日期解释。当前部署基线更新于2026-11-01（Asia/Shanghai）；项目目录：D:/ai/local-ai-agent。
 
-## 环境
+## 当前部署基线（2026-11-01 17:12）
+
+仅Agent backend上线最终代码e19b6b16对应JAR `1f9d9628fbe2cdbb50190c12fcda60ae9870daeb1563caaf84ecef5ddf09f07d`，使用对应hash不可变runtime。管理员受管身份/argv与自然空闲通过，旧PID9516正常匹配stopped回执，新PID7700/instancea9366577…独立ready、hostInJob=false；完整部署门禁与root只读绑定复核passed。影视研究模型仍为指令4B，工作区仍1.7B；Ollama21434、Agent5000、Router5002、Vue3000仅loopback，11,272条索引及其hash保持。
+
+新检查点 `G:/gying-backups/ai-agent-quality-20261031-20261101T091153.915087Z` 三份age hash/完整认证解密通过，manifest533d9247…；Movie实际image/JAR/配置、其他12容器和Ollama/Router/frontend/config/key/token/index保持，当前加密state保留。只恢复应用的回退须正常排空/按身份停止，再恢复旧JAR；不恢复旧SQL/state、删除数据或重放任务。最新证据见Movie仓库 `docs/evaluation/quality-improvement-20261031/deployment-final-20261101.md`，原始部署与核对材料位于 `E:/gying-tools/releases/ai-quality-improvement-20261031/deployment-20261101-continued/`。
+
+四问串行真实Agent观测均HTTP/API200 completed、程序0失败，总耗时39.0秒；第1与第4正文未列片名，第4原始对白仍未核验，模型复核为满足2/未满足1/有用但不完全1，有效澄清0、真人新增0，不计四条全部满足。网站USER10场景/15轮、真人验收及独立质量提升率未覆盖；Movie G01–G11未关闭。上午回退、16:59取消及以下旧验收均保留原日期，不能作为当前包身份。
+
+## 环境安装历史基线（2026-10-16/18）
 
 | 组件 | 版本 / 设置 | 本机路径 |
 | --- | --- | --- |
@@ -60,7 +68,7 @@
 
 2026-10-18 已将 backend、router、frontend 按实例握手平滑停止并重新部署；退出后均验证原进程消失、端口释放与匹配的 stop.completed.json。后端在途真实模型请求另行验收：10:15:58.634 开始 draining，10:15:58.924 完整回答返回，10:15:59.039 才写入 stopped 确认；没有强制结束进程。
 
-`stop-local.ps1 -CheckOnly` 只读预检，最后一行 JSON 提供 runningServices 与 instances；`start-local.ps1 -Services ...` 仅恢复指定服务。当前 Ollama 存量进程无可验证隔离控制台，普通全量 stop 在预检拒绝，三个应用可用 `-Services frontend,router,backend -Graceful` 独立停止。`-ForReboot` 仅用于已安排的正常 Windows 重启：先排空应用、确认无已连接客户端、卸载所有模型，再标记 Ollama 仍运行并交由 Windows 正常关机。此验收没有重启电脑，也没有强杀 Ollama。
+`stop-local.ps1 -CheckOnly` 只读预检，最后一行 JSON 提供 runningServices 与 instances；`start-local.ps1 -Services ...` 仅恢复指定服务。2026-10-18当时的 Ollama 存量进程无可验证隔离控制台，普通全量 stop 在预检拒绝，三个应用可用 `-Services frontend,router,backend -Graceful` 独立停止。`-ForReboot` 仅用于已安排的正常 Windows 重启：先排空应用、确认无已连接客户端、卸载所有模型，再标记 Ollama 仍运行并交由 Windows 正常关机。此验收没有重启电脑，也没有强杀 Ollama。
 
 原始源码归档：G:/local-ai-agent/backups/dacb308-source.zip。
 旧 pnpm 11 前端依赖备份：.local/frontend-node_modules-pnpm11。
@@ -98,17 +106,17 @@
 
 GYING结构化查询增加独立影视模型、公开元数据向量索引、原文核验与真实Bing搜索，16:00–16:01已部署。早期82项候选与旧运行包记录是上线前状态；最终查询部署87项verify和装配回归通过，后续服务补丁91项verify通过，不再将早期候选写成当前包。Ollama保持0.11.11；影视为`qwen3:4b-instruct-2507-q4_K_M`，工作区仍1.7B。Node当前24.22.1，上面10月18的20.17.0是历史基线。
 
-17:19–17:20仅平滑替换本机backend，当前代码`cd79797`、运行JAR SHA`33d9b6748cdac41f82e7d7ac9afbcda4f672d2bf71fce640c235f8e3efdf3c37`。当前11,272条生效索引SHA`f74cb9c6afd7c5b029305a3c0a141a3d1348eb5116285fb7de43bcdbc9b43eb4`。启动器默认WMI创建独立隐藏启动壳，避免受调用方Job退出影响；内部ServiceHost若仍在Job中拒绝启动。6项真实合成Job行为与9项研究配置验证通过，完整JAR隔离健康/握手/优雅退出通过。只用`scripts/start-local.ps1`或原start-all入口恢复已选定服务，不绕过受管启动器手工后台启动。
+17:19–17:20仅平滑替换本机backend，当时的代码`cd79797`、运行JAR SHA`33d9b6748cdac41f82e7d7ac9afbcda4f672d2bf71fce640c235f8e3efdf3c37`。该轮11,272条生效索引SHA`f74cb9c6afd7c5b029305a3c0a141a3d1348eb5116285fb7de43bcdbc9b43eb4`。启动器默认WMI创建独立隐藏启动壳，避免受调用方Job退出影响；内部ServiceHost若仍在Job中拒绝启动。6项真实合成Job行为与9项研究配置验证通过，完整JAR隔离健康/握手/优雅退出通过。只用`scripts/start-local.ps1`或原start-all入口恢复已选定服务，不绕过受管启动器手工后台启动。
 
 片库冷读取原10秒超时改为read/call30秒，仍受总体deadline约束；真实条件/语义/Bing及生产只读队列已完成，9入口符合预期。小模型仍有额外人物排除/年份边界偏差，不能把completed等同全正确。网站登录条件查询未复验；未转存、发帖或发消息。回退三份age认证材料在`G:/gying-backups/ai-agent-20261025T091941.886931Z`，只恢复应用并保留当前加密state/key。Movie安全58 PASS/11 FAIL/1 UNKNOWN为前序复检，本补丁未关闭原风险。
 
-今晚2026-10-25 20:00 +08单次优雅重启仍Ready；只读绑定及readiness通过，未立即执行或重复登记，重启后仍需ASUS登录恢复。详见[结构化检索](gying-query-plan-v2.md)及Movie仓库`docs/ai-assistant-availability-20261025.md`。
+2026-10-25当时20:00 +08单次优雅重启为Ready；只读绑定及readiness通过，未立即执行或重复登记，重启后仍需ASUS登录恢复。详见[结构化检索](gying-query-plan-v2.md)及Movie仓库`docs/ai-assistant-availability-20261025.md`。
 
 ## 2026-10-28 重启后端口恢复
 
 10月27日20:03真实重启后，Windows TCP排除范围11402–11501覆盖11434，Ollama实际bind失败10013；原登录恢复未完成。10月28日18:20–18:21正常退出子进程已结束的精确旧Node宿主，将私有 `.local/environment.json` 的 `ollamaPort` 设为21434。启动、后端 `LOCAL_AI_OLLAMA_URL`、健康、模型卸载、实例端口检查和正常停止共用此端口；Ollama、Agent5000、Router5002、Vue3000全部只监听127.0.0.1。
 
-Ollama保留独立隐藏控制台，新增子日志仅继承指定三个句柄；新生命周期目录与child日志ACL仅当前用户/SYSTEM/Administrators。业务JAR仍为10月25日SHA `33d9b6748cdac41f82e7d7ac9afbcda4f672d2bf71fce640c235f8e3efdf3c37`，模型与索引未替换。Movie维护runtime同步读取同一私有端口配置，原journal=recovered、0 pending、Worker已由原guard还原。
+Ollama保留独立隐藏控制台，新增子日志仅继承指定三个句柄；新生命周期目录与child日志ACL仅当前用户/SYSTEM/Administrators。当时业务JAR仍为10月25日SHA `33d9b6748cdac41f82e7d7ac9afbcda4f672d2bf71fce640c235f8e3efdf3c37`，模型与索引未替换。Movie维护runtime同步读取同一私有端口配置，原journal=recovered、0 pending、Worker已由原guard还原。
 
 配置14项、身份/退出7项、Node4项、Windows Job6项、新目录/日志ACL3项及原console fixture12项通过。真实1.7B读取package/Router返回正确名称与dev命令；4B片库查询成功。简短历史追问未正确利用上下文，网站登录用户链路未复验。九入口健康不等于所有AI质量场景通过。
 

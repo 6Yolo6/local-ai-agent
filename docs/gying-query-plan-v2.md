@@ -39,7 +39,7 @@ Movie仓库新增开发网站runner和84条历史回答的模型辅助复核，�
 
 10月29日用户恢复上线授权后，Movie后端内存与缓存修复已另行部署；Agent经用户重试及管理员确认，于20:56–20:57替换为代码`9cd1d2b`对应的完整JAR，SHA-256 `01eab8e20a5ecbbbc8677d1000fecb7e87479402f3e839c3b9444ff39336782b`，使用对应hash的不可变运行副本。旧实例正常退出、新实例ready，三份age回退材料完成hash与认证解密校验；当前state/key/token/config及索引保持。21:00两条实际查询的类别与评分来源均通过，但两条都遗漏评分降序，第二条遗漏剧情类型，因此只计专项通过，不计完整需求满足。部署及回退证据在 `E:/gying-tools/releases/ai-recovery-20261029-1750/`；Movie仓库 `docs/evaluation/resource-recovery-20261029/README.md` 保留完整验收范围。
 
-## 2026-10-31 条件与会话改进候选（生产未替换）
+## 2026-10-31 条件与会话候选准备历史
 
 本轮先复核82条历史未满足回答的逐轮依据，再检查现役仍有缺口的行为。旧输出、冻结题与模型评分保留；这些回答来自10月23日的旧实现，不能当成10月31日生产失败率。本轮候选聚焦通用条件提取和会话边界，未声明82条问题全部修复。
 
@@ -50,11 +50,11 @@ Movie仓库新增开发网站runner和84条历史回答的模型辅助复核，�
 
 范围替换新增受限`replaceRanges`数组，允许`year`、`runtime`、`rating`，最多3项且不允许重复；必须是`inheritContext=true`且每个指定维度有本轮显式新边界。Agent只根据用户明确的范围替换生成该指令，不接受模型凭空重置。Movie后端先清旧维度两端再合并本轮条件，执行后的queryPlan消费并移除指令。普通新增单侧边界保留另一侧；继承后无交集也有效澄清。
 
-新Agent依赖支持该契约的Movie backend，部署顺序必须先Movie backend、后Agent；旧Movie backend会拒绝未知字段。回退先恢复旧Agent再回退Movie backend，保留当前state/key与数据。10月31日此处仅记录源码候选，生产尚未替换，现役Agent仍为10月29日01eab8…；本轮不改变工作区模型、索引或其他服务配置。
+新Agent依赖支持该契约的Movie backend，部署顺序必须先Movie backend、后Agent；旧Movie backend会拒绝未知字段。回退先恢复旧Agent再回退Movie backend，保留当前state/key与数据。10月31日准备阶段此处仅记录源码候选，当时生产尚未替换、Agent为10月29日01eab8…；本轮不改变工作区模型、索引或其他服务配置。
 
 首候选完成121/121项Java测试，无跳过，compile通过；源码绑定SHA-256为 `e9410defc7e5a6fc5c037fe64c1ebc26c9916da7509ef6861c9a096634b956c8`，完整JAR SHA-256为 `2156f19e7497a2a0657bc1fb4cfe617694f66e448d4131ea0c98847486d177ee`。隔离Agent经只读relay查询现役公共片库，3条实际探针的数量/同源评分排序、剧情剧集类型及严格`90 < runtime < 100`边界全部程序检查通过；共3次catalog查询，实例正常退出，未消费生产队列或执行真实外发。候选与验证证据位于 `E:/gying-tools/releases/ai-quality-improvement-20261031/`。
 
-这3条是当前缺口的实际专项验证，不表示全部历史回答已满足需求。Movie范围替换新契约通过Java回归；后续隔离Movie候选真实类联动见下段，生产两服务/网站多轮仍未验。首候选专项查询不代替两服务按顺序部署后的真实会话验收。
+这3条是当前缺口的实际专项验证，不表示全部历史回答已满足需求。Movie范围替换新契约通过Java回归；后续隔离Movie候选真实类联动见下段，当时生产两服务/网站多轮仍未验。首候选专项查询不代替两服务按顺序部署后的真实会话验收。
 
 本轮新增人工验收为0；模型辅助判断仍单独标明来源。网站USER的10场景/15轮采集未执行，本机候选专项查询不能替代登录网站链路或独立质量评测。主题相关性、改编关系、时效公告、内容排除及真实偏好仍需依据实际回答和来源继续复核。
 
@@ -69,6 +69,14 @@ Movie另补纪录题材别名的内部等价匹配，保留原metadata/plan；�
 
 第二候选Agent dc8…与Movie d0149…完整15轮为14 completed/1 WEB_TIMEOUT失败；模型辅助复核满足4（其中1为允许的诚实无结果处理）、未满足4、已完成但证据不足4、有效澄清2，另1执行失败不评分。最后新Agent1f9…再次完整15轮，13 completed/2失败（01 WEB_UNAVAILABLE、07 WEB_TIMEOUT），不以新请求覆盖旧失败；最终13条答案的模型复核为满足3（版本资料2、音乐首轮1）、有效澄清2、未满足4、证据不足4，另2次执行失败三维质量保持null；最终逐轮结论保存在Movie仓库 `docs/evaluation/quality-improvement-20261031/development-final-review.json`，实际回答见同目录 `development-final-answers.md`。
 
-三轮都是实现方的开发观测，新增真人0，不是独立质量提升率。真实Ollama/现役索引与Movie候选真实类通过限定SELECT的SnapshotJdbcTemplate联动，使用同一12,822条公开快照；分页快照非原子事务。两进程正常退出；无生产DB连接/写入、队列领取、state持久化或外发。Movie完整Spring/调度器、生产部署和网站USER链路仍未验。
+三轮都是实现方的开发观测，新增真人0，不是独立质量提升率。真实Ollama/现役索引与Movie候选真实类通过限定SELECT的SnapshotJdbcTemplate联动，使用同一12,822条公开快照；分页快照非原子事务。两进程正常退出；无生产DB连接/写入、队列领取、state持久化或外发。上述隔离观测不覆盖Movie完整Spring/调度器、生产部署或网站USER链路。
 
-生产仍为10月29日01eab…；本轮G01–G11门禁及普通权限受管身份预检未通过，未停止或替换生产服务。固定镜像/新JAR、现役全部覆盖、先Movie后Agent及逆序回退的计划已准备在外部release；10月29日授权例外不自动复用。新部署须由本候选特定范围处理门禁，并通过管理员只读身份复核及新的加密检查点认证验证。
+10月31日批准前准备阶段，生产当时为10月29日01eab…；G01–G11门禁及普通权限受管身份预检未通过，该阶段未停止或替换生产服务。固定镜像/新JAR、现役全部覆盖、先Movie后Agent及逆序回退的计划已准备在外部release；10月29日授权例外未自动复用。该阶段部署计划要求本候选特定范围的授权、管理员只读身份复核及新的加密检查点认证验证。
+
+## 2026-11-01 17:12 最终候选上线
+
+用户明确批准本候选有限两后端部署例外与管理员预检后，Movie backend已于10月31日22:58上线image8d65…/JARd0149…；Agent于11月1日17:12上线代码e19b6b16对应最终JAR1f9d…，满足先Movie后Agent的契约顺序。管理员受管身份/argv、自然空闲、新三age hash/完整认证解密、旧9516匹配正常停止、新7700/instancea9366577…不可变runtime/ready/hostInJob=false以及root只读绑定复核passed。上午失败/应用回退和16:59提权取消仍按原时点保留；本段才是当前运行基线。
+
+新检查点为 `G:/gying-backups/ai-agent-quality-20261031-20261101T091153.915087Z`，manifest533d9247…；Movie及其他12容器、Ollama/Router/frontend/config/key/token/index保持，当前加密state保留。回退先按受管身份正常停止新Agent并恢复旧JAR；如再回退Movie，遵循逆序且保留当前data/state/key，不恢复旧SQL或重放任务。最终证据见Movie仓库 `docs/evaluation/quality-improvement-20261031/deployment-final-20261101.md`，仓库外部署回执、完整验证和root复核位于 `E:/gying-tools/releases/ai-quality-improvement-20261031/deployment-20261101-continued/`。G01–G11未关闭，部署例外不表示安全加固完成。
+
+上线后四问串行真实Agent观测均HTTP/API200 completed、程序0失败，总耗时39.0秒；第1与第4正文未列片名，第4原始对白仍未核验，模型复核为满足2/未满足1/有用但不完全1，有效澄清0、真人新增0，质量不等于四条全部满足。新原始报告、实际正文与复核单独保存在Movie仓库 `docs/evaluation/quality-improvement-20261031/post-deployment-report.json`、`post-deployment-answers.md`、`post-deployment-review.json`，旧三轮输出不覆盖。它们不代替网站USER10场景/15轮、真人验收或独立质量提升率；主题、作者关系、早期列表引用和柔性偏好仍有不足。
