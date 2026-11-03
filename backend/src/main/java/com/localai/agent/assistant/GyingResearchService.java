@@ -47,6 +47,7 @@ public class GyingResearchService {
                 return result.put("answer",text+unsupportedNotice(effective)).put("status","completed");
             }
             boolean announcement=ExplicitMetadataQuery.announcement(ExplicitQueryConstraints.constraintText(request.path("message").asText()));
+            if(!announcement&&!effective.path("intent").asText().equals("web"))answer+=catalogRows(found.path("movies"),ExplicitQueryConstraints.constraintText(request.path("message").asText()),effective);
             if(!announcement)answer+=unsupportedNotice(effective);
             if(announcement)answer="本次查询日期："+java.time.LocalDate.now(java.time.ZoneId.of("Asia/Shanghai"))+"。片库元数据不能确认当前官方发行公告的地区、版本和发布日期。";
             if(!announcement&&effective.path("intent").asText().equals("web")&&found.path("movies").size()==1){
@@ -96,7 +97,7 @@ public class GyingResearchService {
                             ObjectNode candidate=effective.deepCopy();candidate.put("intent","search").put("inheritContext",false).putArray("titles").add(title);candidate.put("limit",5);
                             ObjectNode follow=query.deepCopy();follow.set("plan",candidate);follow.remove(List.of("denseCandidates","message","candidateLimit"));start=System.nanoTime();ObjectNode located=catalog.query(follow,deadline);
                             ObjectNode t=step(id,"tool","queryCatalog","success",start);t.set("arguments",candidate);t.set("result",mapper.createObjectNode().put("ok",true).set("data",located));trace.add(t);
-                            if(!located.path("movies").isEmpty()){found.put("superseded",true);found=located;result.set("queryPlan",located.path("queryPlan").deepCopy());answer="联网线索提示可能是《"+title+"》；已保留原筛选条件重新查询片库，实际候选列在下方。"+unsupportedNotice(located.path("queryPlan"));}
+                            if(!located.path("movies").isEmpty()){found.put("superseded",true);found=located;result.set("queryPlan",located.path("queryPlan").deepCopy());answer="联网线索提示可能是《"+title+"》；已保留原筛选条件重新查询片库，实际候选列在下方。"+catalogRows(located.path("movies"),ExplicitQueryConstraints.constraintText(request.path("message").asText()),located.path("queryPlan"))+unsupportedNotice(located.path("queryPlan"));}
                         }
                         if(!announcement&&found.path("movies").isEmpty()&&title.isBlank())answer="联网找到了以下相关资料，仍不足以确认唯一影片，请核对来源或补充线索。"+unsupportedNotice(effective);
                         answer+="\n搜索资料摘录："+String.join("；",selected.stream().map(i->"“"+webQuotes.get(i)+"”").toList())+"。";
@@ -104,8 +105,6 @@ public class GyingResearchService {
                     }
                 }
             }
-            String requested=ExplicitQueryConstraints.constraintText(request.path("message").asText());
-            if(!effective.path("intent").asText().equals("web")&&!announcement&&(ExplicitMetadataQuery.versionList(requested)||ExplicitMetadataQuery.years(requested)))answer+=metadataRows(found.path("movies"),requested);
             if(announcement)answer+="\n搜索摘要与链接列在下方；未核实的官方身份、地区、版本和公告发布日期仍未知，不能用影片年份或查询日期代替公告发布日期。";
             return result.put("answer",answer).put("status","completed");
         }catch(IOException e){return failure(result,e instanceof OllamaService.OllamaException oe?oe.code():"CATALOG_RESEARCH_UNAVAILABLE","查询计划或片库查询未完成，请稍后重试。");}
@@ -115,13 +114,36 @@ public class GyingResearchService {
         List<String> conditions=new ArrayList<>();for(JsonNode value:plan.path("unsupportedConditions"))if(!value.asText().isBlank())conditions.add(value.asText());
         return conditions.isEmpty()?"":"\n尚未核实的条件："+String.join("；",conditions)+"。片库候选尚不能视为满足全部硬条件。";
     }
-    private static String movieTitle(JsonNode movie){String cn=movie.path("titleCn").asText();return cn.isBlank()?movie.path("titleEn").asText("片名暂无"):cn;}
+    private static String movieTitle(JsonNode movie){String cn=movie.path("titleCn").asText(),en=movie.path("titleEn").asText();return !cn.isBlank()?cn:!en.isBlank()?en:"片名暂无";}
     private static String names(JsonNode movie,String field){List<String> names=new ArrayList<>();for(JsonNode value:movie.path(field))if(value.isTextual()&&!value.asText().isBlank())names.add(value.asText());return names.isEmpty()?"暂无资料":String.join("、",names);}
-    private static String metadataRows(JsonNode movies,String request){
+    private static String catalogRows(JsonNode movies,String request,JsonNode plan){
         StringBuilder rows=new StringBuilder();int i=0;boolean directors=ExplicitMetadataQuery.versionList(request)||ExplicitMetadataQuery.directors(request);
-        for(JsonNode movie:movies){if(++i>20)break;rows.append("\n").append(i).append(". 《").append(movieTitle(movie)).append("》；年份：").append(movie.hasNonNull("year")?movie.path("year").asText():"暂无");if(directors)rows.append("；导演：").append(names(movie,"directors"));if(ExplicitMetadataQuery.actors(request))rows.append("；主演：").append(names(movie,"actors"));}
+        for(JsonNode movie:movies){
+            if(++i>20)break;
+            rows.append("\n").append(i).append(". 《").append(movieTitle(movie)).append("》；年份：").append(positiveInteger(movie,"year"));
+            if(directors)rows.append("；导演：").append(names(movie,"directors"));
+            if(ExplicitMetadataQuery.actors(request))rows.append("；主演：").append(names(movie,"actors"));
+            String runtime=positiveInteger(movie,"runtimeMinutes");rows.append(movie.path("category").asText().equals("tv")?"；片库时长（单集/整部口径未核验）：":"；片长：").append(runtime).append(runtime.equals("暂无")?"":"分钟");
+            rows.append(scoreText(movie,plan.path("ratingSource").asText("any")));
+            if(!plan.path("languagesAny").isEmpty()||!plan.path("excludedLanguages").isEmpty()||ExplicitMetadataQuery.originalLanguage(request))rows.append("；片库语言：").append(names(movie,"languages"));
+            if(ExplicitMetadataQuery.originalLanguage(request))rows.append("；原始对白：未核验");
+            for(JsonNode reason:movie.path("reasons"))if(reason.isTextual()&&reason.asText().startsWith("剧情资料依据：“"))rows.append("；").append(reason.asText());
+        }
         return rows.toString();
     }
+    private static String positiveInteger(JsonNode movie,String field){JsonNode value=movie.path(field);return value.isIntegralNumber()&&value.asLong()>0?value.asText():"暂无";}
+    private static String scoreText(JsonNode movie,String source){
+        Map<String,String> fields=Map.of("douban","doubanScore","imdb","imdbScore","tmdb","tmdbVoteAverage");
+        Map<String,String> labels=Map.of("douban","豆瓣","imdb","IMDb","tmdb","TMDB");
+        if(fields.containsKey(source))return "；"+labels.get(source)+"评分："+scoreValue(movie.path(fields.get(source)));
+        StringBuilder scores=new StringBuilder();
+        for(String provider:List.of("douban","imdb","tmdb")){
+            String value=scoreValue(movie.path(fields.get(provider)));
+            if(!value.equals("暂无"))scores.append("；").append(labels.get(provider)).append("评分：").append(value);
+        }
+        return scores.isEmpty()?"；评分：暂无":scores.toString();
+    }
+    private static String scoreValue(JsonNode value){return value.isNumber()&&Double.isFinite(value.asDouble())&&value.asDouble()>=0&&value.asDouble()<=10?value.asText():"暂无";}
     private boolean sameFilmIdentity(JsonNode source,JsonNode movie){
         if(!movie.path("category").asText().equals("mv")||movie.path("year").asInt(0)<=0)return false;
         for(String field:List.of("titleEn","titleCn")){

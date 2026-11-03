@@ -158,4 +158,79 @@ class GyingResearchServiceTest {
         verify(catalog).query(any(),anyLong());verify(web).search(anyString());verify(model).structured(any(),any(),anyLong());verifyNoInteractions(details);
     }
 
+
+    @Test void ordinaryCatalogAnswerListsActualCandidatesInOrderAndNeverSubstitutesMissingRequestedScore()throws Exception{
+        var p=plan("{\"intent\":\"search\",\"ratingSource\":\"douban\",\"sort\":\"rating_desc\",\"limit\":2,\"minRuntime\":91,\"maxRuntime\":99}");
+        var f=found(p,"a");f.put("answer","按本次已识别条件找到 357 部，先展示 2 部。");
+        ((ObjectNode)f.path("movies").get(0)).put("titleCn","高分样本").put("year",2009).put("runtimeMinutes",96).put("doubanScore",9.1).put("imdbScore",9.8).put("rating",9.8);
+        ((ArrayNode)f.path("movies")).addObject().put("id","b").put("titleCn","缺分样本").put("runtimeMinutes",95).putNull("doubanScore").put("imdbScore",9.9).put("rating",9.9);
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
+        var r=service.run(mapper.createObjectNode().put("message","找喜剧电影，片长严格超过90分钟且严格少于100分钟，最多两部，按豆瓣评分排序，缺分写暂无，不用IMDb补"),"job","lease",System.nanoTime()+60_000_000_000L);
+        assertThat(r.path("status").asText()).isEqualTo("completed");
+        assertThat(r.path("answer").asText()).contains("1. 《高分样本》；年份：2009；片长：96分钟；豆瓣评分：9.1","2. 《缺分样本》；年份：暂无；片长：95分钟；豆瓣评分：暂无").doesNotContain("9.8","9.9","IMDb评分");
+        verifyNoInteractions(details,web);verify(model,never()).structured(any(),any(),anyLong());
+    }
+    @Test void unspecifiedRatingSourceDisplaysActualProviderScoresRatherThanAnAmbiguousAggregate()throws Exception{
+        var p=plan("{\"intent\":\"search\"}");var f=found(p,"a");
+        ((ObjectNode)f.path("movies").get(0)).put("titleCn","").put("titleEn","Sample").put("doubanScore",7.1).put("imdbScore",8.2).put("tmdbVoteAverage",6.3).put("rating",9.9);
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
+        String answer=run().path("answer").asText();
+        assertThat(answer).contains("《Sample》","片长：暂无","豆瓣评分：7.1","IMDb评分：8.2","TMDB评分：6.3").doesNotContain("9.9");
+    }
+    @Test void catalogAnswerOnlyListsCandidatesRetainedByActualSummaryReview()throws Exception{
+        var p=plan("{\"intent\":\"search\",\"semanticText\":\"宇航员回家\"}");var f=found(p,"a");
+        ((ObjectNode)f.path("movies").get(0)).put("titleCn","已核对样本");
+        ((ArrayNode)f.path("movies")).addObject().put("id","b").put("titleCn","被拒绝样本").put("summary","城里的厨师参加比赛。");
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
+        when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"selectedIds\":[\"a\",\"b\"],\"quotes\":[{\"id\":\"a\",\"quote\":\"返回地球的航线\"},{\"id\":\"b\",\"quote\":\"凭空补充的宇航员\"}]}"));
+        var r=run();
+        assertThat(r.path("answer").asText()).contains("1. 《已核对样本》","剧情资料依据：“返回地球的航线”").doesNotContain("被拒绝样本","凭空补充");
+        verifyNoInteractions(web,details);
+    }
+    @Test void originalLanguageCandidatesRemainIndividuallyUnverifiedAfterEmptyWebResults()throws Exception{
+        var p=plan("{\"intent\":\"search\",\"languagesAny\":[\"中文\",\"西班牙语\"],\"unsupportedConditions\":[\"片库语言字段未区分原始对白与发行配音，原始语言条件仍待核验\"]}");var f=found(p,"a");
+        ((ObjectNode)f.path("movies").get(0)).put("titleCn","国语样本").put("runtimeMinutes",90).putArray("languages").add("国语");
+        ((ArrayNode)f.path("movies")).addObject().put("id","b").put("titleCn","语言缺失样本");
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[]}}"));
+        var r=service.run(mapper.createObjectNode().put("message","找动画电影，原始对白中文或西班牙语，只有配音资料就标未核验"),"job","lease",System.nanoTime()+60_000_000_000L);
+        assertThat(r.path("answer").asText()).contains("《国语样本》","片库语言：国语；原始对白：未核验","《语言缺失样本》","片库语言：暂无资料；原始对白：未核验","尚不能视为满足全部硬条件");
+        assertThat(r.path("queryPlan").path("unsupportedConditions").size()).isEqualTo(1);
+    }
+    @Test void catalogListSurvivesWebRelevanceFailureWithoutShowingUnreviewedSources()throws Exception{
+        var p=plan("{\"intent\":\"search\",\"unsupportedConditions\":[\"内容限制未核验\"]}");var f=found(p,"a");
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
+        when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[{\"title\":\"未核对资料\",\"snippet\":\"未核对摘要\"}]}}"));
+        when(model.structured(any(),any(),anyLong())).thenThrow(new IOException("fixture"));
+        var r=run();
+        assertThat(r.path("status").asText()).isEqualTo("completed");assertThat(r.path("partial").asBoolean()).isTrue();
+        assertThat(r.path("answer").asText()).contains("1. 《样本》","内容限制未核验","联网资料未完成相关性核对").doesNotContain("未核对资料","未核对摘要");
+    }
+    @Test void webLocatedReplacementListsNewActualCandidateWithoutKeepingSupersededCandidate()throws Exception{
+        var p=plan("{\"intent\":\"web\",\"yearFrom\":2020}");var first=found(p,"a");var second=found(p,"b");
+        ((ObjectNode)first.path("movies").get(0)).put("titleCn","旧候选");((ObjectNode)second.path("movies").get(0)).put("titleCn","新候选").put("year",2021);
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(first,second);
+        when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[{\"title\":\"新候选电影\",\"snippet\":\"新候选的剧情资料\"}]}}"));
+        when(model.structured(any(),any(),anyLong())).thenReturn(plan("{\"relevantIndices\":[0],\"identifiedTitle\":\"新候选\",\"quotes\":[{\"index\":0,\"quote\":\"新候选的剧情资料\"}]}"));
+        var r=run();
+        assertThat(r.path("answer").asText()).contains("保留原筛选条件","1. 《新候选》；年份：2021").doesNotContain("旧候选");assertThat(first.path("superseded").asBoolean()).isTrue();
+    }
+    @Test void emptyCatalogAnswerDoesNotInventAListAndCatalogRowsRemainBounded()throws Exception{
+        var p=plan("{\"intent\":\"search\"}");var empty=found(p,null);
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(empty);when(web.search(anyString())).thenReturn(plan("{\"ok\":true,\"data\":{\"webResults\":[]}}"));
+        assertThat(run().path("answer").asText()).doesNotContain("1. 《","样本");
+        var many=found(p,null);for(int i=1;i<=21;i++)((ArrayNode)many.path("movies")).addObject().put("id","id-"+i).put("titleCn","样本"+i);
+        when(catalog.query(any(),anyLong())).thenReturn(many);
+        assertThat(run().path("answer").asText()).contains("20. 《样本20》").doesNotContain("21. 《样本21》");
+    }
+
+
+    @Test void televisionRuntimeIsDisplayedWithoutAssumingSingleEpisodeOrWholeSeries()throws Exception{
+        var p=plan("{\"intent\":\"search\",\"category\":\"tv\"}");var f=found(p,"a");
+        ((ObjectNode)f.path("movies").get(0)).put("category","tv").put("titleCn","剧集样本").put("runtimeMinutes",45);
+        when(planner.plan(any(),anyLong())).thenReturn(p);when(catalog.query(any(),anyLong())).thenReturn(f);
+        var r=service.run(mapper.createObjectNode().put("message","找剧集，列出片库时长"),"job","lease",System.nanoTime()+60_000_000_000L);
+        assertThat(r.path("answer").asText()).contains("《剧集样本》","片库时长（单集/整部口径未核验）：45分钟").doesNotContain("片长：45分钟");
+        verifyNoInteractions(details,web);
+    }
+
 }

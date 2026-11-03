@@ -80,3 +80,13 @@ Movie另补纪录题材别名的内部等价匹配，保留原metadata/plan；�
 新检查点为 `G:/gying-backups/ai-agent-quality-20261031-20261101T091153.915087Z`，manifest533d9247…；Movie及其他12容器、Ollama/Router/frontend/config/key/token/index保持，当前加密state保留。回退先按受管身份正常停止新Agent并恢复旧JAR；如再回退Movie，遵循逆序且保留当前data/state/key，不恢复旧SQL或重放任务。最终证据见Movie仓库 `docs/evaluation/quality-improvement-20261031/deployment-final-20261101.md`，仓库外部署回执、完整验证和root复核位于 `E:/gying-tools/releases/ai-quality-improvement-20261031/deployment-20261101-continued/`。G01–G11未关闭，部署例外不表示安全加固完成。
 
 上线后四问串行真实Agent观测均HTTP/API200 completed、程序0失败，总耗时39.0秒；第1与第4正文未列片名，第4原始对白仍未核验，模型复核为满足2/未满足1/有用但不完全1，有效澄清0、真人新增0，质量不等于四条全部满足。新原始报告、实际正文与复核单独保存在Movie仓库 `docs/evaluation/quality-improvement-20261031/post-deployment-report.json`、`post-deployment-answers.md`、`post-deployment-review.json`，旧三轮输出不覆盖。它们不代替网站USER10场景/15轮、真人验收或独立质量提升率；主题、作者关系、早期列表引用和柔性偏好仍有不足。
+
+## 2026-11-03 正文清单候选（未上线）
+
+普通catalog回答现在列筛选后真实片名、年份、时长和同源评分，最多20项，不增推理、不重排或补分。原始对白逐项未核验，tv注明片库时长的单集/整部口径未知；未知/拒绝/联网重查替换保持真实候选边界。Movie网页原有evidence卡片，只另补0/null和缺genres的独立显示；Movie业务后端未改。
+
+最终隔离verify143/143、compile通过，8项新增行为回归；源码清单SHA `7df9eb8ebd3bf3deb78ac92bc458b9b323248ec4bbc172bea0dbc60c068980d5`，JAR `439618aefefa4f71e7104b59d8d2c87a80c868e2f68a39be1e63079086d4791a`。最终四问每题一次，4 API200/completed/26.66秒；模型辅助复核满足3/部分有用1，真人0，原始对白仍无足够证据。四问是既有开发诊断而非盲测，不能比较时延或质量收益；另完成现役旧Agent1f9d…/frontendf16c…网站USER15/15轮，机械15通过/0失败；模型诊断满足3/部分1/澄清2/未满足5/缺证4，三维完整13、真人0。这是旧版本开发题观测，不验证本候选上线或质量提升。授权临时test短期设备会话已撤销并恢复disabled/有效设备0/401，密码与USER角色不变；非密码登录或浏览器UI。
+
+初候选142项及四问报告保留，tv提示新增后重新构建并保存最终四问，不覆盖旧评分。报告/原文/hash在Movie仓库 `docs/evaluation/answer-quality-20261103/`，知识在 `docs/ai-answer-quality-guide.md`；仓库外原始构建/退出证据 `E:/gying-tools/releases/ai-answer-quality-20261103/`。
+
+安全本次58 PASS/11 FAIL/1 UNKNOWN，G01–G11未关闭；旧例外不覆盖新候选，生产替换停止。现役Agent仍保留1f9d…/11月1日上线记录，旧不可变JARhash核对。本轮未创建生产加密检查点；以后部署须新检查点/认证、受管身份与正常排空，只恢复应用并保留当前state/key。当前候选不是已部署机制。
