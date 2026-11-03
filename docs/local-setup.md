@@ -1,12 +1,30 @@
 # 本机环境与验收记录
 
-本文保留2026-10-16环境安装与2026-10-18初始验收基线，历史验证均按原日期解释。当前部署基线更新于2026-11-01（Asia/Shanghai）；项目目录：D:/ai/local-ai-agent。
+本文保留2026-10-16环境安装与2026-10-18初始验收基线，历史验证均按原日期解释。当前Agent部署基线更新于2026-11-03（Asia/Shanghai）；项目目录：D:/ai/local-ai-agent。
 
-## 当前部署基线（2026-11-01 17:12）
+## 当前Agent部署基线（2026-11-03 21:12）
+
+Agent backend已上线代码 `15a2b8a8efffaad7aabe6595c43b99433f136f11`、JAR `055f1bdc4bc8d52b8e9c2330d8a3937085d6043f96323cc2461db16f71d75eda`，运行于对应hash不可变副本。旧PID7700/instancea9366577…正常匹配stopped回执；新PID38460、instance `7d5364c2-a479-4451-b632-68cbde0afffa` 于21:11:57启动，21:12部署完成。管理员受管身份/argv、自然空闲、三份新加密检查点及独立启动通过，startup回执hostPid34128、hostInJob=false。Agent部署时保持旧Movie d701…/JAR40aa…，先升级可接受旧context的新Agent，再部署Movie backend。
+
+Movie backend已于21:47:47（Asia/Shanghai）上线代码 `13660c92735af71e01782e529a82051f92936e2d`、image `sha256:f2b7361bc19b547611ed4e963105b9e1d38648de44a0cae4407e1e1bf30d4a44`、实际JAR `1b8a09d55b13c21b00b4bc4cbad730576e249a6d8222554518b216cf6bd494cd`，旧容器TERM143。
+
+新检查点 `G:/gying-backups/ai-agent-query-quality-20261103-20261103T131135.560714Z` 包含旧Agent包、当前私有state/config/key/token和启动脚本三份age，manifest SHA `139a41049df84662c7825570306804d88b21e79afca676a9ed247414e5adcbfb`。每份大小/hash与完整认证解密回执绑定通过；21:18独立只读复核25项通过，没有重复解密。新PID的stored/lifecycle/创建时间/监听与不可变JAR一致，5000/21434/5002/3000四本机入口200；普通权限下当前argv仍为UNKNOWN，部署期管理员argv证明按已审查helper与回执核对。Agent部署及21:18复核期间，Ollama/Router/frontend身份和config/key/token/index/state保持；未执行应用回退、消息、发帖或转存。
+
+Movie最终五份age检查点位于 `G:/gying-backups/ai-query-quality-backend-20261103-20261103T134656.321321Z`，完整认证与离线内容通过；配置与其他容器保持，日常备份已应用新增覆盖并完成dry-run。出现新requestHashVersion2任务身份后禁止旧Movie自动回退，保留当前SQL/state/key，优先前向修复；两侧回退须先检查兼容性。
+
+上线后本机7个与公网7个入口分次通过。公网使用7897既有代理，默认UA初次出现1010、浏览器UA首轮3项URLError，原失败保留，随后定向只读复验成功；这不构成浏览器页面验收。
+
+21:53:54–21:55:10网站USER专项执行原dev-v3-06三轮及dev-v3-09一轮，共4次提交，无重试；4 executed/4 SUCCEEDED、机械4通过/0失败。previousJobId链正确，第三轮指向第一轮列表候选1MeM，片库导演字段为David Barnard；150>100进入有效澄清。模型诊断满足2/未满足1/证据不足1，真人0；RAYE电视特辑的mv/类别冲突仍未解。test已恢复disabled/有效设备0/token401，密码与USER角色保持，临时cnf删除。该专项不覆盖原15轮整套重跑、完整网站多轮及真人验收。 网站证据在Movie仓库 `docs/evaluation/query-quality-20261103/` 下的 `website-report.json`、`website-runtime.json`、`website-contract-validation.json`、`website-review.json`、`website-answers.md` 和 `website-review.md`，原始结果、实际正文、机械验证及模型诊断分别保存。
+
+本轮Agent173项verify及compile通过。原隔离15轮绑定Movie4f73846f…/Agent055f…，15次completed；模型诊断满足5/部分有用2/有效澄清2/未满足4/证据不足2，三维完整12、事实维度未知3、真人0。Movie审查后作者兼主演/执导的额外边界构建没有重跑模型；原15轮未整套重跑，上线后另做上述4轮网站专项，不能改写原评分。第一阶段仍未完成，核心主题误判、分类与电影身份冲突、生产多轮页面及真人验收继续保留。58 PASS/11 FAIL/1 UNKNOWN安全门禁未关闭；本次在用户明确“可部署”后的限定业务范围执行，不计整体安全加固完成。
+
+本轮证据位于Movie仓库 `docs/evaluation/query-quality-20261103/agent-deployment.json` 和同目录README；实际部署回执、助手与计划在 `E:/gying-tools/releases/ai-query-quality-20261103/deployment-agent-20261103/`。回退须先按当前身份正常排空/停止，恢复旧JAR1f9d…并沿受管入口启动，保留当前SQL/state/key；旧Agent不接受新Movie历史字段，两侧回退需按兼容顺序协调，不能单边让旧Agent接收新context。旧环境安装与以下历史验收继续按原时点解释。
+
+## 历史Agent部署基线（2026-11-01 17:12）
 
 仅Agent backend上线最终代码e19b6b16对应JAR `1f9d9628fbe2cdbb50190c12fcda60ae9870daeb1563caaf84ecef5ddf09f07d`，使用对应hash不可变runtime。管理员受管身份/argv与自然空闲通过，旧PID9516正常匹配stopped回执，新PID7700/instancea9366577…独立ready、hostInJob=false；完整部署门禁与root只读绑定复核passed。影视研究模型仍为指令4B，工作区仍1.7B；Ollama21434、Agent5000、Router5002、Vue3000仅loopback，11,272条索引及其hash保持。
 
-新检查点 `G:/gying-backups/ai-agent-quality-20261031-20261101T091153.915087Z` 三份age hash/完整认证解密通过，manifest533d9247…；Movie实际image/JAR/配置、其他12容器和Ollama/Router/frontend/config/key/token/index保持，当前加密state保留。只恢复应用的回退须正常排空/按身份停止，再恢复旧JAR；不恢复旧SQL/state、删除数据或重放任务。最新证据见Movie仓库 `docs/evaluation/quality-improvement-20261031/deployment-final-20261101.md`，原始部署与核对材料位于 `E:/gying-tools/releases/ai-quality-improvement-20261031/deployment-20261101-continued/`。
+新检查点 `G:/gying-backups/ai-agent-quality-20261031-20261101T091153.915087Z` 三份age hash/完整认证解密通过，manifest533d9247…；Movie实际image/JAR/配置、其他12容器和Ollama/Router/frontend/config/key/token/index保持，当前加密state保留。只恢复应用的回退须正常排空/按身份停止，再恢复旧JAR；不恢复旧SQL/state、删除数据或重放任务。该阶段证据见Movie仓库 `docs/evaluation/quality-improvement-20261031/deployment-final-20261101.md`，原始部署与核对材料位于 `E:/gying-tools/releases/ai-quality-improvement-20261031/deployment-20261101-continued/`。
 
 四问串行真实Agent观测均HTTP/API200 completed、程序0失败，总耗时39.0秒；第1与第4正文未列片名，第4原始对白仍未核验，模型复核为满足2/未满足1/有用但不完全1，有效澄清0、真人新增0，不计四条全部满足。网站USER10场景/15轮、真人验收及独立质量提升率未覆盖；Movie G01–G11未关闭。上午回退、16:59取消及以下旧验收均保留原日期，不能作为当前包身份。
 

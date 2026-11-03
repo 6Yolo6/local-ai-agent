@@ -50,7 +50,7 @@ Movie仓库新增开发网站runner和84条历史回答的模型辅助复核，�
 
 范围替换新增受限`replaceRanges`数组，允许`year`、`runtime`、`rating`，最多3项且不允许重复；必须是`inheritContext=true`且每个指定维度有本轮显式新边界。Agent只根据用户明确的范围替换生成该指令，不接受模型凭空重置。Movie后端先清旧维度两端再合并本轮条件，执行后的queryPlan消费并移除指令。普通新增单侧边界保留另一侧；继承后无交集也有效澄清。
 
-新Agent依赖支持该契约的Movie backend，部署顺序必须先Movie backend、后Agent；旧Movie backend会拒绝未知字段。回退先恢复旧Agent再回退Movie backend，保留当前state/key与数据。10月31日准备阶段此处仅记录源码候选，当时生产尚未替换、Agent为10月29日01eab8…；本轮不改变工作区模型、索引或其他服务配置。
+10月31日该候选Agent依赖支持其契约的Movie backend，当时部署顺序必须先Movie backend、后Agent；旧Movie backend会拒绝未知字段。该阶段回退先恢复旧Agent再回退Movie backend，保留当前state/key与数据。10月31日准备阶段此处仅记录源码候选，当时生产尚未替换、Agent为10月29日01eab8…；本轮不改变工作区模型、索引或其他服务配置。
 
 首候选完成121/121项Java测试，无跳过，compile通过；源码绑定SHA-256为 `e9410defc7e5a6fc5c037fe64c1ebc26c9916da7509ef6861c9a096634b956c8`，完整JAR SHA-256为 `2156f19e7497a2a0657bc1fb4cfe617694f66e448d4131ea0c98847486d177ee`。隔离Agent经只读relay查询现役公共片库，3条实际探针的数量/同源评分排序、剧情剧集类型及严格`90 < runtime < 100`边界全部程序检查通过；共3次catalog查询，实例正常退出，未消费生产队列或执行真实外发。候选与验证证据位于 `E:/gying-tools/releases/ai-quality-improvement-20261031/`。
 
@@ -75,25 +75,25 @@ Movie另补纪录题材别名的内部等价匹配，保留原metadata/plan；�
 
 ## 2026-11-01 17:12 最终候选上线
 
-用户明确批准本候选有限两后端部署例外与管理员预检后，Movie backend已于10月31日22:58上线image8d65…/JARd0149…；Agent于11月1日17:12上线代码e19b6b16对应最终JAR1f9d…，满足先Movie后Agent的契约顺序。管理员受管身份/argv、自然空闲、新三age hash/完整认证解密、旧9516匹配正常停止、新7700/instancea9366577…不可变runtime/ready/hostInJob=false以及root只读绑定复核passed。上午失败/应用回退和16:59提权取消仍按原时点保留；本段才是当前运行基线。
+用户明确批准本候选有限两后端部署例外与管理员预检后，Movie backend已于10月31日22:58上线image8d65…/JARd0149…；Agent于11月1日17:12上线代码e19b6b16对应最终JAR1f9d…，满足先Movie后Agent的契约顺序。管理员受管身份/argv、自然空闲、新三age hash/完整认证解密、旧9516匹配正常停止、新7700/instancea9366577…不可变runtime/ready/hostInJob=false以及root只读绑定复核passed。上午失败/应用回退和16:59提权取消仍按原时点保留；本段记录当时运行基线，当前Agent身份见11月3日上线阶段。
 
 新检查点为 `G:/gying-backups/ai-agent-quality-20261031-20261101T091153.915087Z`，manifest533d9247…；Movie及其他12容器、Ollama/Router/frontend/config/key/token/index保持，当前加密state保留。回退先按受管身份正常停止新Agent并恢复旧JAR；如再回退Movie，遵循逆序且保留当前data/state/key，不恢复旧SQL或重放任务。最终证据见Movie仓库 `docs/evaluation/quality-improvement-20261031/deployment-final-20261101.md`，仓库外部署回执、完整验证和root复核位于 `E:/gying-tools/releases/ai-quality-improvement-20261031/deployment-20261101-continued/`。G01–G11未关闭，部署例外不表示安全加固完成。
 
 上线后四问串行真实Agent观测均HTTP/API200 completed、程序0失败，总耗时39.0秒；第1与第4正文未列片名，第4原始对白仍未核验，模型复核为满足2/未满足1/有用但不完全1，有效澄清0、真人新增0，质量不等于四条全部满足。新原始报告、实际正文与复核单独保存在Movie仓库 `docs/evaluation/quality-improvement-20261031/post-deployment-report.json`、`post-deployment-answers.md`、`post-deployment-review.json`，旧三轮输出不覆盖。它们不代替网站USER10场景/15轮、真人验收或独立质量提升率；主题、作者关系、早期列表引用和柔性偏好仍有不足。
 
-## 2026-11-03 正文清单候选（未上线）
+## 2026-11-03 早先正文清单候选（独立包未上线）
 
-普通catalog回答现在列筛选后真实片名、年份、时长和同源评分，最多20项，不增推理、不重排或补分。原始对白逐项未核验，tv注明片库时长的单集/整部口径未知；未知/拒绝/联网重查替换保持真实候选边界。Movie网页原有evidence卡片，只另补0/null和缺genres的独立显示；Movie业务后端未改。
+当时Agent候选为普通catalog回答列筛选后真实片名、年份、时长和同源评分，最多20项，不增推理、不重排或补分。原始对白逐项未核验，tv注明片库时长的单集/整部口径未知；未知/拒绝/联网重查替换保持真实候选边界。Movie网页原有evidence卡片，只另补0/null和缺genres的独立显示；Movie业务后端未改。
 
 最终隔离verify143/143、compile通过，8项新增行为回归；源码清单SHA `7df9eb8ebd3bf3deb78ac92bc458b9b323248ec4bbc172bea0dbc60c068980d5`，JAR `439618aefefa4f71e7104b59d8d2c87a80c868e2f68a39be1e63079086d4791a`。最终四问每题一次，4 API200/completed/26.66秒；模型辅助复核满足3/部分有用1，真人0，原始对白仍无足够证据。四问是既有开发诊断而非盲测，不能比较时延或质量收益；另完成现役旧Agent1f9d…/frontendf16c…网站USER15/15轮，机械15通过/0失败；模型诊断满足3/部分1/澄清2/未满足5/缺证4，三维完整13、真人0。这是旧版本开发题观测，不验证本候选上线或质量提升。授权临时test短期设备会话已撤销并恢复disabled/有效设备0/401，密码与USER角色不变；非密码登录或浏览器UI。
 
 初候选142项及四问报告保留，tv提示新增后重新构建并保存最终四问，不覆盖旧评分。报告/原文/hash在Movie仓库 `docs/evaluation/answer-quality-20261103/`，知识在 `docs/ai-answer-quality-guide.md`；仓库外原始构建/退出证据 `E:/gying-tools/releases/ai-answer-quality-20261103/`。
 
-安全本次58 PASS/11 FAIL/1 UNKNOWN，G01–G11未关闭；旧例外不覆盖新候选，生产替换停止。现役Agent仍保留1f9d…/11月1日上线记录，旧不可变JARhash核对。本轮未创建生产加密检查点；以后部署须新检查点/认证、受管身份与正常排空，只恢复应用并保留当前state/key。当前候选不是已部署机制。
+该阶段安全复检58 PASS/11 FAIL/1 UNKNOWN，G01–G11未关闭，独立4396…包当时未部署，生产仍为1f9d…。该阶段没有创建生产加密检查点；后续055f…包的新检查点与21:12上线另行记录。原四问及旧网站15轮不改算后续包的生产验收，Movie网页候选也未随本次Agent部署发布。
 
-## 2026-11-03 后续未部署候选：角色、主题与历史
+## 2026-11-03 角色、主题与历史（两后端已上线）
 
-本轮候选修改MovieQueryPlanner、ExplicitMetadataQuery/ExplicitQueryConstraints、TrustedCandidateHistory与GyingResearchService。原著、作者或编剧语境不会因姓名匹配新增演员/导演过滤；同一句若明确要求该人物主演或执导，相应条件继续保留。正向主题恢复、撤回偏好与明确类型继承分别处理，改编关系仍须实际来源核验。Movie片库层也检查人物角色和数字边界：“150分钟”里的“50分”不能恢复成演员，句中明确的“50分主演”仍是有效出演条件；两侧构建与验证分别记录。
+本轮Agent实现修改MovieQueryPlanner、ExplicitMetadataQuery/ExplicitQueryConstraints、TrustedCandidateHistory与GyingResearchService。原著、作者或编剧语境不会因姓名匹配新增演员/导演过滤；同一句若明确要求该人物主演或执导，相应条件继续保留。正向主题恢复、撤回偏好与明确类型继承分别处理，改编关系仍须实际来源核验。Movie片库层也检查人物角色和数字边界：“150分钟”里的“50分”不能恢复成演员，句中明确的“50分主演”仍是有效出演条件；两侧构建与验证分别记录。
 
 可信context来自Movie已验证同用户成功Job的previousJobId链。queryPlan/candidateIds/candidates保持最新轮含义；candidateHistory按旧到新最多3轮，加最新共4轮。各轮最多30个公开ID/片名/年份，片名最多120个Java字符；expiresAt按各轮原完成时间加900秒计算，新追问不会续期。总context最多10000个Java字符，最新轮超预算时从尾部裁剪、必要时去掉queryPlan，更早轮次无法整轮加入时停止回溯并保持historyComplete=false。
 
@@ -101,10 +101,20 @@ Movie另补纪录题材别名的内部等价匹配，保留原metadata/plan；�
 
 新指纹版本以稳定的校验输入和previousJobId做提交幂等，执行context单独刷新。祖先过期或context裁剪不会改变同一输入的重试身份；previousJobId本身仍要通过当前归属和有效性检查。旧hash版本按原最新候选context还原兼容核对，终态恢复保存链路，但不延长原15分钟保留时间。
 
-候选主题requirements由业务代码固定完整core，当前明确核心场景强化加入hard，显式“最好、尽量、优先”单列soft。软偏好之后的其他核心子句仍保留。模型按要求索引逐项返回supported/unknown/contradicted和独立quote，不能重新输出一份更窄的要求。缺项或重复项拒绝；core/hard须为supported，且引文长4–60个Java字符、逐字来自本次展示的简介前300个Java字符。soft的supported/contradicted也需要自己的有效引文，否则按未知提示；unknown允许无引文，soft未知或不符不作硬排除。每批最多4个候选、合计最多8个，保留原候选排序与deadline，延续同一次相关性核对阶段。
+主题requirements由业务代码固定完整core，当前明确核心场景强化加入hard，显式“最好、尽量、优先”单列soft。软偏好之后的其他核心子句仍保留。模型按要求索引逐项返回supported/unknown/contradicted和独立quote，不能重新输出一份更窄的要求。缺项或重复项拒绝；core/hard须为supported，且引文长4–60个Java字符、逐字来自本次展示的简介前300个Java字符。soft的supported/contradicted也需要自己的有效引文，否则按未知提示；unknown允许无引文，soft未知或不符不作硬排除。每批最多4个候选、合计最多8个，保留原候选排序与deadline，延续同一次相关性核对阶段。
 
 模型观测所用候选的完整离线构建为Movie899项中869通过、30项环境跳过，Agent173项全部通过，两侧verify/compile均exit0。一次10场景15轮隔离真实模型观测为15次completed，各轮只提交一次；使用2026-10-31分页采集的12822条公开快照，非数据库原子快照。dev-v3-01与dev-v3-10第二轮仍有核心主题误判：合法合同和真实引文只能限制格式、要求完整性及来源，不能确定性证明语义支持。逐条模型诊断保存在Movie仓库 docs/evaluation/query-quality-20261103/，不把completed或旧版网站回答计作新候选质量验收。
 
 原15轮绑定Movie4f73846f…/Agent055f1bdc…。审查后Movie另补同一无标点句中作者与同人主演/执导的逐次姓名匹配，最终构建与确定性回归单独见Movie仓库 docs/evaluation/query-quality-20261103/movie-reviewed-build.json。该边界修复没有重跑模型，原15轮不能证明后来的Movie源码已执行这些模型问题。
 
-生产部署因G01–G11门禁失败停止，现役JAR仍1f9d9628…；没有创建本轮生产加密检查点。隔离fixture历史不代替生产同用户归属、加密队列、租约、多轮页面与真人验收；本轮开发题已被观察，不提供独立质量提升率。
+最初20:46安全复检仍为58 PASS/11 FAIL/1 UNKNOWN，G01–G11未关闭，候选部署当时暂停。随后用户明确“可部署”，21:12仅本机Agent backend上线代码15a2b8a8、JAR055f1bdc…；旧7700正常停止，新PID38460/instance7d5364c2-a479-4451-b632-68cbde0afffa受管独立启动。先Agent后Movie是本轮兼容顺序：旧Agent只接受queryPlan/candidateIds/candidates，新Agent接受旧context，新Movie再增加candidateHistory/historyComplete/expiresAt。Movie backend随后于21:47:47（Asia/Shanghai）上线代码13660c9、imagef2b7361b…/实际JAR1b8a09d5…，旧容器TERM143；实际镜像与JAR绑定审查后的Movie源码。
+
+三份新age检查点位于G:/gying-backups/ai-agent-query-quality-20261103-20261103T131135.560714Z，manifest139a4104…，完整认证与大小/hash通过。21:18独立只读复核25项通过，当前stored/lifecycle/创建时间/监听/JAR与部署回执一致，四本机health200，startup回执hostInJob=false；普通权限实时argv为UNKNOWN，部署期管理员证明按helperhash/回执绑定核对。未重复解密、未执行应用回退或真实外发；Agent部署及21:18复核期间，Ollama/Router/frontend/config/key/token/index/state保持。
+
+Movie最终五份age检查点位于G:/gying-backups/ai-query-quality-backend-20261103-20261103T134656.321321Z，认证及离线内容通过；配置与其他容器保持，日常备份新增覆盖已apply/dry-run。出现新requestHashVersion2任务身份后禁止旧Movie自动回退，保留当前SQL/state/key，优先前向修复；两侧回退须单独检查兼容性。具体身份、回退和证据入口见[本机运行记录](local-setup.md)。
+
+上线后本机7个与公网7个入口分次通过。公网使用7897既有代理，默认UA初次出现1010、浏览器UA首轮3项URLError，原失败保留，随后定向只读复验成功；这不构成浏览器页面验收。
+
+21:53:54–21:55:10网站USER专项执行原dev-v3-06三轮及dev-v3-09一轮，共4次提交，无重试；4 executed/4 SUCCEEDED、机械4通过/0失败。previousJobId链正确，第三轮指向第一轮列表候选1MeM，片库导演字段为David Barnard；150>100进入有效澄清。模型诊断满足2/未满足1/证据不足1，真人0；RAYE电视特辑的mv/类别冲突仍未解。test已恢复disabled/有效设备0/token401，密码与USER角色保持，临时cnf删除。该专项不覆盖原15轮整套重跑、完整网站多轮及真人验收。 网站证据在Movie仓库 `docs/evaluation/query-quality-20261103/` 下的 `website-report.json`、`website-runtime.json`、`website-contract-validation.json`、`website-review.json`、`website-answers.md` 和 `website-review.md`，原始结果、实际正文、机械验证及模型诊断分别保存。
+
+原15轮报告仍是部署前的公开快照开发观测，本次没有整套重跑，也未改写原评分；模型诊断满足5、部分有用2、有效澄清2、未满足4、证据不足2，三维完整12、事实维度未知3、真人0。Movie审查后边界构建与上线行为不能改算这15轮的模型结果。隔离fixture历史不代替生产同用户归属、加密队列、租约、多轮页面与真人验收；第一阶段未完成，本轮不提供独立质量提升率。新Agent的正文机制随055f…上线，早先独立4396…包和Movie网页卡片候选未在本次单独发布。
