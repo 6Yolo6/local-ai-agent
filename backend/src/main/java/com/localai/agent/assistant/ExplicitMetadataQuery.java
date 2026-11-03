@@ -46,6 +46,8 @@ final class ExplicitMetadataQuery {
             metadataIntent(result,"details");
             result.remove("semanticText");
         }
+        if(text.matches("(?s).*(?:(?:原著|原作|小说|作品).*改编|改编自).*"))
+            unverified(result,"原作改编关系及对应原著需实际来源核验，片库未提供可验证的原作者关系字段");
         if(originalLanguage(text))
             unverified(result,"片库语言字段未区分原始对白与发行配音，原始语言条件仍待核验");
         if(contentRestriction(text))

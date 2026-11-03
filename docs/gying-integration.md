@@ -71,3 +71,21 @@ GYING scope追加searchMovieWeb，固定zh/en维基百科公开API，只传影�
 推理前先保存 jobId/lease/截止时间，结果落盘后才回传；重启后有结果仅重传，无结果回传 BRIDGE_INTERRUPTED，不重放原 attempt。45秒租约由独立线程每5秒续期，服务端240秒总预算不可延长。服务器终态的同lease/同结果回执可重复确认；409清除旧回执。状态绑定原origin，最多保存15分钟；成功/冲突清除，停机期在恢复时处理过期。单文件独占锁、AES-GCM、owner-only ACL/0600和原子替换，损坏或写入失败停止执行。单机单worker，不宣称工具级恢复或exactly-once推理。
 
 测试通过隔离fixture HTTP及独立JVM退出验证，模型为替身；2026-10-23真实内部模型查询与空闲平滑重启后2条服务端终态恢复已通过，attempt不变；真实网站用户及在途回执跨重启仍待验收。新增取消表示拒绝旧租约回执，当前只读模型调用仍可能执行至自身预算结束。部署先升级兼容的GYing backend再升级本机bridge；回退先排空，保存旧包/快照/key，不删除私有状态，不重放历史副作用。
+
+## 2026-11-03 后续未部署候选：角色、主题与历史
+
+本轮候选修改MovieQueryPlanner、ExplicitMetadataQuery/ExplicitQueryConstraints、TrustedCandidateHistory与GyingResearchService。原著、作者或编剧语境不会因姓名匹配新增演员/导演过滤；同一句若明确要求该人物主演或执导，相应条件继续保留。正向主题恢复、撤回偏好与明确类型继承分别处理，改编关系仍须实际来源核验。Movie片库层也检查人物角色和数字边界：“150分钟”里的“50分”不能恢复成演员，句中明确的“50分主演”仍是有效出演条件；两侧构建与验证分别记录。
+
+可信context来自Movie已验证同用户成功Job的previousJobId链。queryPlan/candidateIds/candidates保持最新轮含义；candidateHistory按旧到新最多3轮，加最新共4轮。各轮最多30个公开ID/片名/年份，片名最多120个Java字符；expiresAt按各轮原完成时间加900秒计算，新追问不会续期。总context最多10000个Java字符，最新轮超预算时从尾部裁剪、必要时去掉queryPlan，更早轮次无法整轮加入时停止回溯并保持historyComplete=false。
+
+“最开始列表第一部”须能证明对话起点，再按序号、片名或ID定位；多个指示和版本年份应一致。historyComplete=false、过期或身份冲突时澄清，不能把目前最早保留的一轮冒称第一轮。客户端history文字仅作对话理解，不能提供可信ID。定位旧轮后采用details/inheritContext=false/scope=catalog，移除没有在本轮明确提出的最新过滤条件；Movie claim与runningContext重新读取链路，历史详情在查询前再核有效期与当前Job租约。
+
+新指纹版本以稳定的校验输入和previousJobId做提交幂等，执行context单独刷新。祖先过期或context裁剪不会改变同一输入的重试身份；previousJobId本身仍要通过当前归属和有效性检查。旧hash版本按原最新候选context还原兼容核对，终态恢复保存链路，但不延长原15分钟保留时间。
+
+候选主题requirements由业务代码固定完整core，当前明确核心场景强化加入hard，显式“最好、尽量、优先”单列soft。软偏好之后的其他核心子句仍保留。模型按要求索引逐项返回supported/unknown/contradicted和独立quote，不能重新输出一份更窄的要求。缺项或重复项拒绝；core/hard须为supported，且引文长4–60个Java字符、逐字来自本次展示的简介前300个Java字符。soft的supported/contradicted也需要自己的有效引文，否则按未知提示；unknown允许无引文，soft未知或不符不作硬排除。每批最多4个候选、合计最多8个，保留原候选排序与deadline，延续同一次相关性核对阶段。
+
+模型观测所用候选的完整离线构建为Movie899项中869通过、30项环境跳过，Agent173项全部通过，两侧verify/compile均exit0。一次10场景15轮隔离真实模型观测为15次completed，各轮只提交一次；使用2026-10-31分页采集的12822条公开快照，非数据库原子快照。dev-v3-01与dev-v3-10第二轮仍有核心主题误判：合法合同和真实引文只能限制格式、要求完整性及来源，不能确定性证明语义支持。逐条模型诊断保存在Movie仓库 docs/evaluation/query-quality-20261103/，不把completed或旧版网站回答计作新候选质量验收。
+
+原15轮绑定Movie4f73846f…/Agent055f1bdc…。审查后Movie另补同一无标点句中作者与同人主演/执导的逐次姓名匹配，最终构建与确定性回归单独见Movie仓库 docs/evaluation/query-quality-20261103/movie-reviewed-build.json。该边界修复没有重跑模型，原15轮不能证明后来的Movie源码已执行这些模型问题。
+
+生产部署因G01–G11门禁失败停止，现役JAR仍1f9d9628…；没有创建本轮生产加密检查点。隔离fixture历史不代替生产同用户归属、加密队列、租约、多轮页面与真人验收；本轮开发题已被观察，不提供独立质量提升率。

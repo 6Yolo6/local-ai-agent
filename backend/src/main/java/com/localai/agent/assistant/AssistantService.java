@@ -238,11 +238,8 @@ public class AssistantService {
         String message = checkedContent(request.get("message"), 3000, "message");
         if(request.has("context")){
             JsonNode context=request.path("context");
-            if(!"gying".equals(scope)||!context.isObject()||context.toString().length()>10000)throw new IllegalArgumentException("无效的片库上下文");
-            context.fieldNames().forEachRemaining(k->{if(!Set.of("queryPlan","candidateIds","candidates").contains(k))throw new IllegalArgumentException("上下文包含未知字段");});
-            for(String k:java.util.List.of("candidateIds","candidates"))if(context.has(k)&&(!context.path(k).isArray()||context.path(k).size()>30))throw new IllegalArgumentException("上下文候选数量无效");
-            if(context.has("queryPlan")&&!context.path("queryPlan").isObject())throw new IllegalArgumentException("无效的上一轮计划");
-            for(JsonNode candidate:context.path("candidates"))if(!candidate.isObject()||candidate.toString().length()>500)throw new IllegalArgumentException("上下文候选格式无效");
+            if(!"gying".equals(scope))throw new IllegalArgumentException("无效的片库上下文");
+            TrustedCandidateHistory.validate(context);
         }
         ArrayNode messages = mapper.createArrayNode();
         messages.addObject().put("role", "system").put("content", "gying".equals(scope) ? """

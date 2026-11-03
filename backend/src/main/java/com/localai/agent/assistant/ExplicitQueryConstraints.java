@@ -1,5 +1,6 @@
 package com.localai.agent.assistant;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -31,13 +32,17 @@ final class ExplicitQueryConstraints {
         return Normalizer.normalize(message,Normalizer.Form.NFKC).toLowerCase(Locale.ROOT).replaceAll("《[^》]*》"," ");
     }
     static boolean isFollowup(String text) {
-        return text.matches("(?s).*(?:刚才|其中|前面|上面|这部|这些|那份|最开始|第一轮|最早那份|[0-9]+年(?:那个|这个|该|的)?版本|那个版本|该版本|第[一二两三四五六七八九十0-9]+部|只留|再筛|换一批|其他条件不变|其余不变|条件.*别改|改成|改为|改用|换成|换用|重新给|重新找|再按).*")
+        return text.matches("(?s).*(?:刚才|其中|前面|上面|这部|这些|那份|最开始|第一轮|最早那份|第一份列表|[0-9]+年(?:那个|这个|该|的)?版本|那个版本|该版本|第[一二两三四五六七八九十0-9]+部|只留|再筛|换一批|其他条件不变|其余不变|保持(?:原|之前|刚才|上轮|上一轮)|(?:条件|类型|数量|年份|评分|片长|时长).*?(?:不变|别改)|改成|改为|改用|换成|换用|重新给|重新找|再按).*")
             ||text.matches("(?s)^\\s*(?:按|再按).*(?:排序|排|从高到低|从低到高).*")
             ||text.matches("(?s)^\\s*(?:不要|排除|别放)[^。!?！？]*(?:的|作品|影片|电影)?[。!?！？]?$");
     }
     static boolean previousResults(String text) {
         return text.matches("(?s).*(?:其中|结果只留|刚才的结果|刚才结果|只留|再筛|这些|那份|最开始).*" )
             ||text.matches("(?s)^\\s*(?:按|再按).*(?:排序|排|从高到低|从低到高).*");
+    }
+    static void ground(JsonNode request,String text,ObjectNode result,boolean followup) {
+        ground(text,result,followup);
+        TrustedCandidateHistory.ground(request,result);
     }
     static void ground(String text,ObjectNode result,boolean followup) {
         // Model-proposed numbers and reset commands need literal evidence in this turn.
@@ -80,10 +85,10 @@ final class ExplicitQueryConstraints {
             }
             if(!group.equals("rating"))for(String endpoint:List.of(lower,upper))if(result.has(endpoint))result.put(endpoint,result.path(endpoint).decimalValue().intValueExact());
         }
-        if(text.matches("(?s).*(?:最开始|第一轮|最早那份).*")) {
+        if(TrustedCandidateHistory.referencesFirst(text)) {
             // The bridge context contains the latest result set only, not a verified older snapshot.
             result.remove(List.of("movieId","ordinal"));
-            clarify(result,"当前可核对的候选上下文只有最新一轮，无法确定您指的更早列表中的影片。请提供那部的片名或那份列表，再核对对应资料。");
+            clarify(result,TrustedCandidateHistory.OLDER_CLARIFICATION);
         }
     }
     static void putOrdinal(String value,ObjectNode result) {

@@ -26,7 +26,8 @@ public class MovieQueryPlanner {
             你只抽取用户明确说出的影视查询条件，不回答、不猜影片、不补人物、不翻译名字。没提到的字段必须省略，不能填默认年份、评分、ordinal或id。
             intent: search普通查找；similar找类似作品；details查具体影片资料；web明确要求联网；clarify条件不明；recommend泛推荐。
             titles仅明确说出的片名；剧情描述绝不是片名。actors/directors为要求的演员/导演原文姓名；排除用excludedActors/excludedDirectors。类似《某片》只填seedTitle，不填titles。
-            semanticText为用户所说剧情、题材或相似点，不能编故事，不含否定、年份、评分、时长和数量。
+            semanticText为用户所说剧情、题材或相似点，不能编故事，不含否定、年份、评分、时长和数量。即使只有“某主题纪录片”也必须保留该主题。
+            原作者、作家和编剧不是演员或导演；改编关系写入semanticText并注明缺少原作关系字段。最好/偏好不是硬主题，用户撤回偏好后不再继承它，其他明确不变的类型和数量保留。
             genresAny类型任选，genresAll类型同时具备，excludedGenres排除类型。类型用中文：科幻/动作/喜剧/爱情/悬疑/惊悚/恐怖/动画/冒险/犯罪/剧情/奇幻/战争/历史/纪录片/家庭/灾难/音乐/歌舞。
             regionsAny地区任选，languagesAny语言任选，excludedLanguages排除语言，均保持用户原文。actorsAny/directorsAny用于人物或关系。
             yearFrom起始年，yearTo截止年；近N年按给定date计算。minRuntime至少多少分钟，maxRuntime最多多少分钟。minRating评分下限，maxRating评分上限，ratingSource为douban/imdb/tmdb/any。
@@ -91,6 +92,7 @@ public class MovieQueryPlanner {
                 if(!name.isBlank()&&fieldEvidence.contains(key(name))){
                     boolean person=field.toLowerCase(Locale.ROOT).contains("actor")||field.toLowerCase(Locale.ROOT).contains("director");
                     if(person&&quoted.stream().anyMatch(t->key(t).equals(key(name))))continue;
+                    if(person&&otherPersonRole(constraints,name))continue;
                     if(person&&!field.startsWith("excluded")&&negative(message,name)){
                         result.withArray(field.toLowerCase(Locale.ROOT).contains("actor")?"excludedActors":"excludedDirectors").add(name);continue;
                     }
@@ -113,13 +115,8 @@ public class MovieQueryPlanner {
         }}
         ExplicitMetadataQuery.ground(request,result,followup,constraints);
         ExplicitQueryConstraints.ground(constraints,result,followup);
-        if(!result.path("intent").asText().equals("web")&&!result.path("intent").asText().equals("details")){
-            var topic=java.util.regex.Pattern.compile("(?:讲|关于|涉及)([^，。；,;]{3,160})").matcher(message);
-            if(topic.find())result.put("semanticText",topic.group(1));
-            else if(message.matches("(?s).*(?:题材|主题|情节).*" )&&result.path("semanticText").asText().isBlank()){
-                String raw=message.split("[，。；,;]",2)[0];result.put("semanticText",raw.substring(0,Math.min(300,raw.length())));
-            }
-        }
+        if(!result.path("intent").asText().equals("web")&&!result.path("intent").asText().equals("details"))groundTheme(request,result,constraints,followup);
+        preserveDeclaredType(request,result,constraints,followup);
         for(String field:List.of("regionsAny","languagesAny","excludedLanguages")){
             List<String> terms=field.equals("regionsAny")?List.of("美国","日本","韩国","中国大陆","大陆","国产","香港","台湾","法国","英国","德国","意大利","西班牙","爱尔兰"):List.of("英语","中文","普通话","国语","粤语","日语","韩语","法语","德语","西班牙语");
             ArrayNode values=mapper.createArrayNode();for(String term:terms)if((field.equals("regionsAny")?regionalText:constraints).contains(term)&&!(field.equals("regionsAny")&&constraints.matches(".*(?:演员|导演).*(?:国籍|哪个国家).*"))){boolean neg=negative(constraints,term);if(field.equals("excludedLanguages")==neg||field.equals("regionsAny")&&!neg)values.add(term);}
@@ -127,8 +124,9 @@ public class MovieQueryPlanner {
         }
         if(followup&&ExplicitQueryConstraints.previousResults(constraints))result.put("scope","previousResults");
         if(!followup&&result.path("scope").asText().equals("previousResults"))result.remove("scope");
+        TrustedCandidateHistory.ground(request,result);
         Set<String> validIds=new HashSet<>();request.path("context").path("candidateIds").forEach(v->validIds.add(v.asText()));
-        if(result.has("movieId")&&!result.path("movieId").asText().isBlank()&&!validIds.contains(result.path("movieId").asText()))invented.add("movieId");
+        if(result.has("movieId")&&!result.path("movieId").asText().isBlank()&&!TrustedCandidateHistory.validMovieIds(request).contains(result.path("movieId").asText()))invented.add("movieId");
         for(JsonNode id:result.path("excludedIds"))if(!validIds.contains(id.asText()))invented.add("excludedIds");
         if(!invented.isEmpty())throw new OllamaService.OllamaException("QUERY_PLAN_UNGROUNDED","模型加入了原问题没有给出的实体或标识，请重新表述。");
         String semanticText=result.path("semanticText").asText();
@@ -140,6 +138,80 @@ public class MovieQueryPlanner {
         if(ExplicitMetadataQuery.announcement(constraints))result.remove("regionsAny");
         ExplicitQueryChoices.ground(message,result);
         return result;
+    }
+    private static boolean otherPersonRole(String text,String name){
+        String word=key(name);if(word.isBlank())return false;
+        String literalName=java.util.regex.Pattern.quote(name);
+        // An author can also be explicitly requested as an actor/director; keep that separate role.
+        var performed=java.util.regex.Pattern.compile("(?:演员|主演|导演|执导|出演)\\s*"+literalName+"|"+literalName+"(?:的)?(?:主演|出演|执导|导演)").matcher(text);
+        while(performed.find()){
+            String prefix=text.substring(Math.max(0,performed.start()-12),performed.start());
+            if(!prefix.matches("(?s).*(?:不是|不当|不要|不用|别|非)\\s*$"))return false;
+        }
+        var named=java.util.regex.Pattern.compile("([\\p{L}\\p{N}·.\\s]{1,60}?)(?:的)?(?:原著|原作|小说|作品)\\s*改编|(?:原作者|原作作者|作家|作者|编剧)(?:是|为|叫|名为|：)?\\s*([\\p{L}\\p{N}·.\\s]{1,60})").matcher(text);
+        while(named.find())for(int i=1;i<=named.groupCount();i++)if(named.group(i)!=null&&key(named.group(i)).contains(word))return true;
+        return false;
+    }
+    private void preserveDeclaredType(JsonNode request,ObjectNode result,String text,boolean followup){
+        if(!followup||!(text.matches("(?s).*(?:电影类型|片目类型|类型|类别)[^，。；,;]{0,30}(?:不变|别改|不要改|保持).*")||text.matches("(?s).*(?:保持|沿用|保留)(?:原|之前|刚才|上一轮|上轮)?(?:的)?(?:电影类型|片目类型|类型|类别).*")))return;
+        JsonNode previous=request.path("context").path("queryPlan");
+        for(String field:List.of("genresAll","genresAny","excludedGenres"))if(previous.path(field).isArray())result.set(field,previous.path(field).deepCopy());
+    }
+    private void groundTheme(JsonNode request,ObjectNode result,String text,boolean followup){
+        String explicit=explicitTheme(text),modelTheme=result.path("semanticText").asText();
+        List<String> withdrawn=withdrawnPreferences(text);
+        String previous=followup?removePreferences(request.path("context").path("queryPlan").path("semanticText").asText(),withdrawn):"";
+        String theme;
+        if(!explicit.isBlank()){
+            boolean replace=text.matches("(?s).*(?:主题|题材|情节|场景)[^，。；,;]{0,8}(?:改成|改为|换成|换为).*" );
+            theme=followup&&!replace&&!previous.isBlank()&&!key(previous).contains(key(explicit))?joinThemes(previous,explicit):explicit;
+        }else if(followup&&!previous.isBlank())theme=previous;
+        else theme=modelTheme;
+        theme=removePreferences(theme,withdrawn).trim();
+        if(theme.isBlank())result.remove("semanticText");else result.put("semanticText",theme.substring(0,Math.min(300,theme.length())));
+    }
+    private static String joinThemes(String previous,String current){
+        int budget=Math.max(0,300-current.length()-1);return previous.substring(0,Math.min(budget,previous.length()))+"；"+current;
+    }
+    private static String explicitTheme(String text){
+        for(String raw:text.split("[，。；,;!?！？]|(?:但是|不过|但)")){
+            String clause=raw.trim();
+            if(clause.isBlank()||clause.matches("^(?:不要|不必|不用|排除|不含|避开|取消|撤回|最好|偏好).*"))continue;
+            var changed=java.util.regex.Pattern.compile("(?:主题|题材|情节|场景)\\s*(?:改成|改为|换成|换为)\\s*([^，。；,;]{2,160})").matcher(clause);
+            if(changed.find())return changed.group(1).replaceFirst("^关于","");
+            var topic=java.util.regex.Pattern.compile("(?:讲述|讲|关于|涉及)([^，。；,;]{2,160})|以([^，。；,;]{2,120}?)为(?:故事)?(?:核心|重要|主要)?(?:场景|背景|主题)").matcher(clause);
+            if(topic.find())return topic.group(1)!=null?topic.group(1):topic.group();
+            if(clause.matches(".*(?:必须(?:是|作为)|一定(?:是|要是)|是)(?:故事)?(?:核心|重要|主要)(?:场景|背景|主题).*"))return clause;
+            var head=java.util.regex.Pattern.compile("^(?:(?:我)?想看|想找|寻找|查找|找|推荐|我想要|给我)\\s*(.{1,160}?)(?:纪录片|电影|影片|片子|电视剧|剧集)(?:[\\s的]*|$)").matcher(clause);
+            if(head.find()){
+                String prefix=head.group(1).replaceAll("^(?:[零一二两三四五六七八九十百0-9]+部|几部|些|一些|以)","").replaceAll("[\\s的]+$","");
+                String meaningful=prefix;for(String genre:GENRES)meaningful=meaningful.replace(genre,"");
+                meaningful=meaningful.replaceAll("(?:美国|日本|韩国|中国大陆|大陆|国产|香港|台湾|法国|英国|德国|意大利|西班牙|爱尔兰|英语|中文|普通话|国语|粤语|日语|韩语|法语|德语|西班牙语|的|和|或|都行)","");
+                if(key(meaningful).length()>=2&&!prefix.matches(".*(?:主演|出演|导演|执导|评分|分数|分钟|小时|上映|至少|最多|不超过|[0-9]+年).*"))return prefix;
+            }
+        }
+        return "";
+    }
+    private static List<String> withdrawnPreferences(String text){
+        List<String> values=new ArrayList<>();
+        var relaxed=java.util.regex.Pattern.compile("(?:^|[，。；,;]|但)([^，。；,;]{0,12}?)(?:不用|不必|无需|不要求|不需要)\\s*([^，。；,;]{1,40}?)(?:也行|也可以|也没关系|都可以)").matcher(text);
+        while(relaxed.find()){
+            String subject=relaxed.group(1).trim(),value=relaxed.group(2).trim();
+            if(!subject.isBlank()){values.add(subject+value);values.add(value+subject);}
+            values.add(value);
+        }
+        var removed=java.util.regex.Pattern.compile("(?:取消|撤回|去掉)(?:之前|原来|刚才)?(?:的)?([^，。；,;]{1,40}?)(?:偏好|要求)").matcher(text);
+        while(removed.find())values.add(removed.group(1).trim());
+        return values;
+    }
+    private static String removePreferences(String theme,List<String> withdrawn){
+        StringBuilder kept=new StringBuilder();
+        for(String raw:theme.split("[，。；,;!?！？]")){
+            String clause=raw.replaceAll("(?:最好|优先希望|偏好)[^，。；,;]*$","").trim();
+            for(String term:withdrawn)if(!term.isBlank())clause=clause.replace(term,"");
+            if(!clause.isBlank()){if(!kept.isEmpty())kept.append("；");kept.append(clause);}
+        }
+        return kept.toString().replaceAll("[\\s的]+$","").trim();
     }
     private long remaining(long deadline){return java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(deadline-System.nanoTime());}
 }

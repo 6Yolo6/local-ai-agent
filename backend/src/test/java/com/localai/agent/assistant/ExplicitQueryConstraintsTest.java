@@ -78,7 +78,7 @@ class ExplicitQueryConstraintsTest {
         assertThat(plan.path("replaceRanges")).containsExactly(mapper.getNodeFactory().textNode("rating"));
     }
     @Test void knownConversationListOperationsInheritButFreshRequestsRemainIndependent()throws Exception {
-        for(String text:new String[]{"年份改成2015年及以后，其他条件不变","再按豆瓣评分排序","按年份从旧到新排","不要甲乙丙导演的"})
+        for(String text:new String[]{"年份改成2015年及以后，其他条件不变","再按豆瓣评分排序","按年份从旧到新排","不要甲乙丙导演的","电影类型和最多三部都别改","保持上一轮数量"})
             assertThat(followup(text,"{\"intent\":\"search\"}").path("inheritContext").asBoolean()).as(text).isTrue();
         assertThat(followup("找几部新的喜剧电影","{\"intent\":\"search\",\"inheritContext\":true}").path("inheritContext").asBoolean()).isFalse();
     }
