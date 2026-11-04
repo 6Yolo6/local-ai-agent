@@ -119,8 +119,14 @@ Movie最终五份age检查点位于G:/gying-backups/ai-query-quality-backend-202
 
 原15轮报告仍是部署前的公开快照开发观测，本次没有整套重跑，也未改写原评分；模型诊断满足5、部分有用2、有效澄清2、未满足4、证据不足2，三维完整12、事实维度未知3、真人0。Movie审查后边界构建与上线行为不能改算这15轮的模型结果。隔离fixture历史不代替生产同用户归属、加密队列、租约、多轮页面与真人验收；第一阶段未完成，本轮不提供独立质量提升率。新Agent的正文机制随055f…上线，早先独立4396…包和Movie网页卡片候选未在本次单独发布。
 
-## 2026-11-04 电影身份与主题候选（未部署）
+## 2026-11-04 电影身份与主题（双后端已上线）
 
 Movie配套公开mediaIdentity及独立filmIdentityRequired，Agent保守处理类别与季号，使用实际简介反证复核完整主题，不传首轮结论或影片身份诱导。裸季号仅待核验，详情保持受限tmdbType/season并生成身份；旧无字段响应保守回退。多轮二次查询不重复清洗已解析计划，联网片名回填保持原主题/身份/数量，额外召回20、主题复核8与原期限不变。只有实际身份/主题核对已完成但缺证时，补充联网失败才保留partial completed与诚实未知、错误trace；核心链失败保持失败。
 
-最终隔离verify/compile为202/202，候选JAR1d1ad180…、来源70a7788e…；首轮模型Movie1d06…/Agented32…仍保留影院WEB_TIMEOUT/未执行，不据重复题算质量提升。Movie973项942过31环境跳过、真实SQL12另验；专项证据在Movie仓库docs/evaluation/identity-theme-20261104。最终冻结Movie2c13…/Agent1d1a…完成版本/音乐/影院三场景7/7，每轮一次、零推理重试，双临时进程正常exit0；独立模型复核满足3/部分有用1/证据不足2/未满足1，三维完整3/7、事实null4、真人0。音乐三轮满足，版本身份仍未知；影院无核定候选，第二轮文学摘录相关性不足，诚实空结果不算满足。详情2次均走18883快照，非生产详情；原首轮失败和11月3日观测保持。生产10容器、Agent受管身份及索引保持，四实际入口200，实时argv仍UNKNOWN。当前Agent生产仍11月3日055f1bdc…，安全58/11/1阻断本轮部署，第一阶段未完成。将来获本轮限定部署授权后Movie先、Agent后，检查点和应用回退保持当前SQL/state/key并先证新字段兼容。
+最终隔离verify/compile为202/202，候选JAR1d1ad180…、来源70a7788e…；首轮模型Movie1d06…/Agented32…仍保留影院WEB_TIMEOUT/未执行，不据重复题算质量提升。Movie973项942过31环境跳过、真实SQL12另验；专项证据在Movie仓库docs/evaluation/identity-theme-20261104。最终冻结Movie2c13…/Agent1d1a…完成版本/音乐/影院三场景7/7，每轮一次、零推理重试，双临时进程正常exit0；独立模型复核满足3/部分有用1/证据不足2/未满足1，三维完整3/7、事实null4、真人0。音乐三轮满足，版本身份仍未知；影院无核定候选，第二轮文学摘录相关性不足，诚实空结果不算满足。详情2次均走18883快照，非生产详情；原首轮失败和11月3日观测保持。隔离观测期间生产10容器、Agent受管身份及索引保持，四实际入口200，实时argv UNKNOWN；该保持结论不覆盖后续部署。本轮获用户“可上线”限定授权，Movie backend于2026-11-04 22:39:17、Agent backend于2026-11-04 22:42:34（Asia/Shanghai）按先Movie后Agent顺序上线；实际image/JAR、受管身份、真实入口与独立只读复核通过。安全58 PASS/11 FAIL/1 UNKNOWN及G01–G11仍未关闭，第一阶段未完成。
+
+Movie正常TERM143后完成五份age检查点 `G:\gying-backups\ai-identity-theme-backend-20261104-20261104T143825.278661Z`，Agent正常停止后完成三份age检查点 `G:\gying-backups\ai-agent-identity-theme-20261104-20261104T144159.678847Z`；manifest/size/hash/完整认证检查通过，二者是各自停止窗口检查点，非跨服务原子快照。两份静态应用/回退覆盖已纳入日常备份，dry-run30通过，自然完整备份未验。现役Compose在原11层末尾追加第12层 `E:\gying-tools\releases\ai-identity-theme-20261104\deployment-backend\candidate.json`；前11份文件及参数保持，11月3日第10层rollback和第11层candidate仍保留。有效配置、当前数据/state/key/token/模型/索引及无关容器和本机服务保持。
+
+应用回退保持当前SQL/state/key；回退旧Movie前先比较持久化filmIdentityRequired历史，并在候选写入者正常停止后再次核对。新增或竞态历史阻断旧版启动，必要时恢复当前候选保持运行。这些保护由已审查助手与回归验证，不称生产竞态注入；不恢复旧dump或数据。旧Agent055f…直接拷贝queryPlan，传输能保留新字段，恢复旧Agent应用通常无需回退Movie，但会失去本轮电影身份与第二主题审查机制。
+
+原七轮仍为部署前隔离开发观测，7/7 completed不等于7条满足；模型诊断满足3/部分有用1/证据不足2/未满足1、事实null4、真人0保持。本次上线后只读GET与入口检查没有模型推理或新USER任务，网站USER、跨owner、自然TTL、真实浏览器、主题回答和真人质量仍未验。 当前JAR `1d1ad1800339f94ffb4b85fa3d93bd6a495e37bd8e1dad5e2dbb59383aaa8a64`、代码`6c277a4161b4840a89f8ecdca020818192f9eb3c`、PID21260/instance`ff9b164c-ee6f-4620-a1d1-e972d07a634f`；新受管身份/ready/监听与回执独立核对通过。Movie仓库docs/evaluation/identity-theme-20261104/deployment.md保存本轮上线边界。
