@@ -142,6 +142,7 @@ public class GyingTools {
         textList(summary, movie, "directors", 2);
         textList(summary, movie, "actors", 3);
         textList(summary, movie, "genres", 3);
+        summary.set("mediaIdentity", CatalogMediaIdentity.describe(summary, mapper));
         data.set("movie", summary);
         ArrayNode resources = data.putArray("resources");
         List<JsonNode> matching = new ArrayList<>();
@@ -189,6 +190,12 @@ public class GyingTools {
         for (String key : List.of("id", "titleCn", "titleEn", "category")) text(result, movie, key, 80);
         for (String key : List.of("year", "doubanScore", "tmdbVoteAverage"))
             if (movie.path(key).isNumber()) result.set(key, movie.get(key));
+        if(movie.path("tmdbType").isTextual()){
+            String type=movie.path("tmdbType").asText().trim().toLowerCase(Locale.ROOT);
+            if(Set.of("movie","tv").contains(type))result.put("tmdbType",type);
+        }
+        JsonNode season=movie.path("season");
+        if(season.isIntegralNumber()&&season.canConvertToInt()&&season.intValue()>=0&&season.intValue()<=1000)result.put("season",season.intValue());
         return result;
     }
 

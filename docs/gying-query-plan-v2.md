@@ -118,3 +118,9 @@ Movie最终五份age检查点位于G:/gying-backups/ai-query-quality-backend-202
 21:53:54–21:55:10网站USER专项执行原dev-v3-06三轮及dev-v3-09一轮，共4次提交，无重试；4 executed/4 SUCCEEDED、机械4通过/0失败。previousJobId链正确，第三轮指向第一轮列表候选1MeM，片库导演字段为David Barnard；150>100进入有效澄清。模型诊断满足2/未满足1/证据不足1，真人0；RAYE电视特辑的mv/类别冲突仍未解。test已恢复disabled/有效设备0/token401，密码与USER角色保持，临时cnf删除。该专项不覆盖原15轮整套重跑、完整网站多轮及真人验收。 网站证据在Movie仓库 `docs/evaluation/query-quality-20261103/` 下的 `website-report.json`、`website-runtime.json`、`website-contract-validation.json`、`website-review.json`、`website-answers.md` 和 `website-review.md`，原始结果、实际正文、机械验证及模型诊断分别保存。
 
 原15轮报告仍是部署前的公开快照开发观测，本次没有整套重跑，也未改写原评分；模型诊断满足5、部分有用2、有效澄清2、未满足4、证据不足2，三维完整12、事实维度未知3、真人0。Movie审查后边界构建与上线行为不能改算这15轮的模型结果。隔离fixture历史不代替生产同用户归属、加密队列、租约、多轮页面与真人验收；第一阶段未完成，本轮不提供独立质量提升率。新Agent的正文机制随055f…上线，早先独立4396…包和Movie网页卡片候选未在本次单独发布。
+
+## 2026-11-04 电影身份与主题候选（未部署）
+
+Movie配套公开mediaIdentity及独立filmIdentityRequired，Agent保守处理类别与季号，使用实际简介反证复核完整主题，不传首轮结论或影片身份诱导。裸季号仅待核验，详情保持受限tmdbType/season并生成身份；旧无字段响应保守回退。多轮二次查询不重复清洗已解析计划，联网片名回填保持原主题/身份/数量，额外召回20、主题复核8与原期限不变。只有实际身份/主题核对已完成但缺证时，补充联网失败才保留partial completed与诚实未知、错误trace；核心链失败保持失败。
+
+最终隔离verify/compile为202/202，候选JAR1d1ad180…、来源70a7788e…；首轮模型Movie1d06…/Agented32…仍保留影院WEB_TIMEOUT/未执行，不据重复题算质量提升。Movie973项942过31环境跳过、真实SQL12另验；专项证据在Movie仓库docs/evaluation/identity-theme-20261104。最终冻结Movie2c13…/Agent1d1a…完成版本/音乐/影院三场景7/7，每轮一次、零推理重试，双临时进程正常exit0；独立模型复核满足3/部分有用1/证据不足2/未满足1，三维完整3/7、事实null4、真人0。音乐三轮满足，版本身份仍未知；影院无核定候选，第二轮文学摘录相关性不足，诚实空结果不算满足。详情2次均走18883快照，非生产详情；原首轮失败和11月3日观测保持。生产10容器、Agent受管身份及索引保持，四实际入口200，实时argv仍UNKNOWN。当前Agent生产仍11月3日055f1bdc…，安全58/11/1阻断本轮部署，第一阶段未完成。将来获本轮限定部署授权后Movie先、Agent后，检查点和应用回退保持当前SQL/state/key并先证新字段兼容。

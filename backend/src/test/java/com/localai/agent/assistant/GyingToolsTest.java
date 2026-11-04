@@ -1,6 +1,7 @@
 package com.localai.agent.assistant;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.*;
@@ -127,6 +128,26 @@ class GyingToolsTest {
         assertThat(result.path("data").path("resourceSummary").path("excluded").asInt()).isEqualTo(5);
         assertThat(result.path("data").path("movie").path("summary").asText()).hasSize(700);
         assertThat(result.path("data").path("truncated").asBoolean()).isTrue();
+    }
+    @Test void realDetailsProjectionPreservesMovieSourceAndLegacySeasonWithoutExposingPrivateFields(){
+        ObjectNode body=mapper.createObjectNode(),metadata=movie("source_movie").put("category","mv").put("tmdbType","movie").put("season",1).put("summary","主人公踏上旅程。"+"公开剧情。".repeat(180)).put("cookie","fixture-private-cookie").put("userId",77).put("adminNotes","fixture-private-note");
+        metadata.putObject("mediaIdentity").put("status","contradicted").put("privateField","fixture-private-identity");body.set("movie",metadata);body.putArray("resources");payload=body.toString();
+        ObjectNode result=tools.execute("getMovieDetails",mapper.createObjectNode().put("id","source_movie"));JsonNode projected=result.path("data").path("movie");
+        assertThat(result.path("ok").asBoolean()).isTrue();assertThat(requestMethod).isEqualTo("GET");assertThat(requestPath).isEqualTo("/api/movies/source_movie");assertThat(projected.path("tmdbType").asText()).isEqualTo("movie");assertThat(projected.path("season").asInt()).isEqualTo(1);assertThat(projected.path("summary").asText()).hasSize(700);
+        assertThat(projected.path("mediaIdentity").path("status").asText()).isEqualTo("supported");assertThat(projected.path("mediaIdentity").path("evidence").toString()).contains("tmdbType","movie","season");assertThat(result.toString()).doesNotContain("fixture-private","cookie","userId","adminNotes","privateField");assertThat(requests).hasValue(1);
+    }
+    @Test void realDetailsProjectionPreservesTelevisionConflictAndTreatsSeasonAloneAsUncertain(){
+        for(String type:List.of("tv","")){
+            ObjectNode body=mapper.createObjectNode();body.set("movie",movie("identity_case").put("category","mv").put("tmdbType",type).put("season",2).put("summary","主人公踏上旅程。"));body.putArray("resources");payload=body.toString();
+            JsonNode projected=tools.execute("getMovieDetails",mapper.createObjectNode().put("id","identity_case")).path("data").path("movie");assertThat(projected.path("season").asInt()).isEqualTo(2);assertThat(projected.path("mediaIdentity").path("status").asText()).isEqualTo(type.equals("tv")?"conflict":"uncertain");assertThat(projected.path("mediaIdentity").path("kind").asText()).isEqualTo(type.equals("tv")?"nonMovie":"unknown");
+        }
+        assertThat(requests).hasValue(2);
+    }
+    @Test void detailsOnlyExposeBoundedMediaTypeAndIntegralSeasonValues(){
+        for(ObjectNode metadata:List.of(movie("bounded_fields").put("tmdbType","movie;fixture-private-type").put("season",1001),movie("bounded_fields").put("tmdbType",7).put("season",1.5),movie("bounded_fields").put("tmdbType","unknown").put("season",-1))){
+            metadata.put("category","mv").put("summary","主人公踏上旅程。");ObjectNode body=mapper.createObjectNode();body.set("movie",metadata);body.putArray("resources");payload=body.toString();JsonNode projected=tools.execute("getMovieDetails",mapper.createObjectNode().put("id","bounded_fields")).path("data").path("movie");assertThat(projected.has("tmdbType")).isFalse();assertThat(projected.has("season")).isFalse();assertThat(projected.path("mediaIdentity").path("status").asText()).isEqualTo("uncertain");assertThat(projected.toString()).doesNotContain("fixture-private-type","1001","1.5");
+        }
+        assertThat(requests).hasValue(3);
     }
 
     @Test void neverReturnsExecutableOrOversizedUrlsAndNeverInventsReplacementLinks() {
